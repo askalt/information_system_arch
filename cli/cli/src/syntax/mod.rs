@@ -1,9 +1,7 @@
-use core::slice::SlicePattern;
-
 #[derive(PartialEq, Debug)]
-enum Token <'a> {
+enum Token<'a> {
     Eps,
-    Path(&'a[u8]),
+    Path(&'a [u8]),
 }
 
 struct LexerState {
@@ -21,7 +19,16 @@ struct Lexer {
 
 impl Lexer {
     fn new() -> Self {
-        Self { state: LexerState { escape_next: false, quote: None }, pos: 0, buf: vec![], acc: None, out: vec![] }
+        Self {
+            state: LexerState {
+                escape_next: false,
+                quote: None,
+            },
+            pos: 0,
+            buf: vec![],
+            acc: None,
+            out: vec![],
+        }
     }
 
     fn feed(&mut self, buf: Vec<u8>) {
@@ -33,7 +40,7 @@ impl Lexer {
         match self.acc {
             Some(ref mut acc) => {
                 acc.push(b);
-            },
+            }
             None => {
                 self.acc = Some(vec![b]);
             }
@@ -92,9 +99,7 @@ impl Lexer {
     }
 }
 
-pub trait Command {
-
-}
+pub trait Command {}
 
 struct Parser {
     lexer: Lexer,
@@ -102,7 +107,9 @@ struct Parser {
 
 impl Parser {
     fn new() -> Self {
-        Self { lexer: Lexer::new() }
+        Self {
+            lexer: Lexer::new(),
+        }
     }
 
     fn feed(&mut self, buf: Vec<u8>) -> Option<Vec<Box<dyn Command>>> {
@@ -115,27 +122,15 @@ impl Parser {
                         return Some(vec![]);
                     } else {
                         match acc[0].as_slice() {
-                            b"cat" => {
-                                
-                            },
-                            b"echo" => {
-
-                            },
-                            b"wc" => {
-
-                            },
-                            b"pwd" => {
-
-                            },
-                            b"exit" => {
-
-                            },
-                            p => {
-                                
-                            },
+                            b"cat" => {}
+                            b"echo" => {}
+                            b"wc" => {}
+                            b"pwd" => {}
+                            b"exit" => {}
+                            p => {}
                         }
                     }
-                },
+                }
                 Token::Path(p) => {
                     acc.push(p.to_owned());
                 }
@@ -185,4 +180,3 @@ mod tests {
         assert_eq!(lexer.next(), Some(Token::Eps));
     }
 }
-
