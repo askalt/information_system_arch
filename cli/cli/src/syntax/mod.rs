@@ -1,9 +1,9 @@
-use crate::cmd::Command;
+use crate::cmd::{cat::CatCmd, echo::EchoCmd, exit::ExitCmd, pwd::PwdCmd, Cmd};
 
 #[derive(PartialEq, Debug)]
-enum Token<'a> {
+enum Token {
     Eps,
-    Path(&'a [u8]),
+    Path(Vec<u8>),
 }
 
 struct LexerState {
@@ -16,7 +16,6 @@ struct Lexer {
     pos: usize,
     buf: Vec<u8>,
     acc: Option<Vec<u8>>,
-    out: Vec<u8>,
 }
 
 impl Lexer {
@@ -29,7 +28,6 @@ impl Lexer {
             pos: 0,
             buf: vec![],
             acc: None,
-            out: vec![],
         }
     }
 
@@ -49,15 +47,10 @@ impl Lexer {
         }
     }
 
-    fn get_out(&mut self) -> Token {
-        let acc = self.acc.as_mut().unwrap();
-        self.out.clear();
-        self.out.extend(acc.iter().cloned());
-        self.acc = None;
-        Token::Path(&self.out)
-    }
-
     fn next(&mut self) -> Option<Token> {
+        if !(self.state.escape_next || self.state.quote.is_some()) {
+            self.acc = None;
+        }
         while self.pos < self.buf.len() {
             let b = self.buf[self.pos];
             self.pos += 1;
@@ -78,8 +71,8 @@ impl Lexer {
                     }
                 } else {
                     if b == b' ' {
-                        if self.acc.is_some() {
-                            return Some(self.get_out());
+                        if let Some(ref acc) = self.acc {
+                            return Some(Token::Path(acc.clone()));
                         }
                     } else if b == b'\'' || b == b'\"' {
                         self.state.quote = Some(b);
@@ -92,8 +85,8 @@ impl Lexer {
         if self.state.escape_next || self.state.quote.is_some() {
             None
         } else {
-            Some(if self.acc.is_some() {
-                self.get_out()
+            Some(if let Some(ref acc) = self.acc {
+                Token::Path(acc.clone())
             } else {
                 Token::Eps
             })
@@ -112,31 +105,33 @@ impl Parser {
         }
     }
 
-    pub fn feed(&mut self, buf: Vec<u8>) -> Option<Vec<Box<dyn Command>>> {
+    pub fn feed(&mut self, buf: Vec<u8>) -> Option<Vec<Box<dyn Cmd>>> {
         self.lexer.feed(buf);
-        let mut acc: Vec<Vec<u8>> = vec![];
-        while let Some(out) = self.lexer.next() {
-            match out {
-                Token::Eps => {
-                    if acc.is_empty() {
-                        return Some(vec![]);
-                    } else {
-                        match acc[0].as_slice() {
-                            b"cat" => {}
-                            b"echo" => {}
-                            b"wc" => {}
-                            b"pwd" => {}
-                            b"exit" => {}
-                            p => {}
+        let cmd_name = self.lexer.next()?;
+        match cmd_name {
+            Token::Eps => Some(vec![]),
+            Token::Path(p) => {
+                let mut args: Vec<Vec<u8>> = vec![];
+                while let Some(out) = self.lexer.next() {
+                    match out {
+                        Token::Eps => {
+                            break;
+                        }
+                        Token::Path(p) => {
+                            args.push(p);
                         }
                     }
                 }
-                Token::Path(p) => {
-                    acc.push(p.to_owned());
-                }
+                Some(vec![match p.as_slice() {
+                    b"cat" => Box::new(CatCmd::new(args)),
+                    b"echo" => Box::new(EchoCmd::new(args)),
+                    b"exit" => Box::new(ExitCmd::new(args)),
+                    b"wc" => todo!(),
+                    b"pwd" => Box::new(PwdCmd::new(args)),
+                    _p => todo!(),
+                }])
             }
         }
-        None
     }
 }
 
@@ -152,9 +147,9 @@ mod tests {
         let mut lexer = Lexer::new();
         assert_eq!(lexer.next(), Some(Token::Eps));
         lexer.feed(line);
-        assert_eq!(lexer.next(), Some(Token::Path(b"awda75")));
-        assert_eq!(lexer.next(), Some(Token::Path(b"awdwe")));
-        assert_eq!(lexer.next(), Some(Token::Path(b"llllplk")));
+        assert_eq!(lexer.next(), Some(Token::Path(b"awda75".to_vec())));
+        assert_eq!(lexer.next(), Some(Token::Path(b"awdwe".to_vec())));
+        assert_eq!(lexer.next(), Some(Token::Path(b"llllplk".to_vec())));
         assert_eq!(lexer.next(), Some(Token::Eps));
     }
 
@@ -164,19 +159,19 @@ mod tests {
         let mut lexer = Lexer::new();
         assert_eq!(lexer.next(), Some(Token::Eps));
         lexer.feed(line);
-        assert_eq!(lexer.next(), Some(Token::Path(b"awda75")));
+        assert_eq!(lexer.next(), Some(Token::Path(b"awda75".to_vec())));
         assert_eq!(lexer.next(), None);
         assert_eq!(lexer.next(), None);
         line = b" awdwd\"".to_vec();
         lexer.feed(line);
-        assert_eq!(lexer.next(), Some(Token::Path(b"wdwdw   awdwd")));
+        assert_eq!(lexer.next(), Some(Token::Path(b"wdwdw   awdwd".to_vec())));
         assert_eq!(lexer.next(), Some(Token::Eps));
         line = b" \'wdwdw  ".to_vec();
         lexer.feed(line);
         assert_eq!(lexer.next(), None);
         line = b" awdwd\'".to_vec();
         lexer.feed(line);
-        assert_eq!(lexer.next(), Some(Token::Path(b"wdwdw   awdwd")));
+        assert_eq!(lexer.next(), Some(Token::Path(b"wdwdw   awdwd".to_vec())));
         assert_eq!(lexer.next(), Some(Token::Eps));
     }
 }
