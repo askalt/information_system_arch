@@ -1,3 +1,5 @@
+use crate::cmd::Command;
+
 #[derive(PartialEq, Debug)]
 enum Token<'a> {
     Eps,
@@ -99,20 +101,18 @@ impl Lexer {
     }
 }
 
-pub trait Command {}
-
-struct Parser {
+pub struct Parser {
     lexer: Lexer,
 }
 
 impl Parser {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self {
             lexer: Lexer::new(),
         }
     }
 
-    fn feed(&mut self, buf: Vec<u8>) -> Option<Vec<Box<dyn Command>>> {
+    pub fn feed(&mut self, buf: Vec<u8>) -> Option<Vec<Box<dyn Command>>> {
         self.lexer.feed(buf);
         let mut acc: Vec<Vec<u8>> = vec![];
         while let Some(out) = self.lexer.next() {
