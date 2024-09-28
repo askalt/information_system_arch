@@ -57,5 +57,6 @@ fn main() {
         if let Err(err) = res {
             println!("[x] error: {}", err);
         }
+        io::stdout().flush().expect("flush works");
     }
 }
