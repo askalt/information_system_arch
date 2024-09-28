@@ -1,4 +1,4 @@
-use crate::cmd::{cat::CatCmd, echo::EchoCmd, exit::ExitCmd, pwd::PwdCmd, Cmd};
+use crate::cmd::{cat::CatCmd, echo::EchoCmd, exit::ExitCmd, pwd::PwdCmd, wc::WcCmd, Cmd};
 
 #[derive(PartialEq, Debug)]
 enum Token {
@@ -126,7 +126,7 @@ impl Parser {
                     b"cat" => Box::new(CatCmd::new(args)),
                     b"echo" => Box::new(EchoCmd::new(args)),
                     b"exit" => Box::new(ExitCmd::new(args)),
-                    b"wc" => todo!(),
+                    b"wc" => Box::new(WcCmd::new(args)),
                     b"pwd" => Box::new(PwdCmd::new(args)),
                     _p => todo!(),
                 }])
