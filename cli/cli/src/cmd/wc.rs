@@ -111,11 +111,13 @@ impl Cmd for WcCmd {
             w.write(b" ")?;
             w.write(path.as_slice())?;
             w.write(b"\n")?;
+            w.flush()?;
             total_stat += &stat;
         }
         if self.args.len() > 1 {
             Self::write_stat(w, &total_stat, width)?;
             w.write(b" total\n")?;
+            w.flush()?;
         }
         Ok(())
     }
