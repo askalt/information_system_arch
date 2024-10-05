@@ -1,3 +1,5 @@
+use std::collections::VecDeque;
+
 use crate::cmd::{
     cat::CatCmd, echo::EchoCmd, exit::ExitCmd, proc::ProcCmd, pwd::PwdCmd, wc::WcCmd, Cmd,
 };
@@ -6,6 +8,7 @@ use crate::cmd::{
 enum Token {
     Eps,
     Path(Vec<u8>),
+    Pipe,
 }
 
 struct LexerState {
@@ -18,6 +21,7 @@ struct Lexer {
     pos: usize,
     buf: Vec<u8>,
     acc: Option<Vec<u8>>,
+    deffered: VecDeque<Token>,
 }
 
 impl Lexer {
@@ -30,6 +34,7 @@ impl Lexer {
             pos: 0,
             buf: vec![],
             acc: None,
+            deffered: VecDeque::new(),
         }
     }
 
@@ -50,6 +55,9 @@ impl Lexer {
     }
 
     fn next(&mut self) -> Option<Token> {
+        if !self.deffered.is_empty() {
+            return self.deffered.pop_front();
+        }
         if !(self.state.escape_next || self.state.quote.is_some()) {
             self.acc = None;
         }
@@ -78,6 +86,13 @@ impl Lexer {
                         }
                     } else if b == b'\'' || b == b'\"' {
                         self.state.quote = Some(b);
+                    } else if b == b'|' {
+                        if let Some(ref acc) = self.acc {
+                            self.deffered.push_back(Token::Pipe);
+                            return Some(Token::Path(acc.clone()));
+                        } else {
+                            return Some(Token::Pipe);
+                        }
                     } else {
                         self.push(b);
                     }
@@ -107,33 +122,41 @@ impl Parser {
         }
     }
 
-    pub fn feed(&mut self, buf: Vec<u8>) -> Option<Vec<Box<dyn Cmd>>> {
+    pub fn feed(&mut self, buf: Vec<u8>) -> anyhow::Result<Vec<Box<dyn Cmd>>> {
+        let mut cmds = vec![];
         self.lexer.feed(buf);
-        let cmd_name = self.lexer.next()?;
-        match cmd_name {
-            Token::Eps => Some(vec![]),
-            Token::Path(p) => {
-                let mut args: Vec<Vec<u8>> = vec![];
-                while let Some(out) = self.lexer.next() {
-                    match out {
-                        Token::Eps => {
-                            break;
-                        }
-                        Token::Path(p) => {
-                            args.push(p);
+        while let Some(token) = self.lexer.next() {
+            match token {
+                Token::Eps => {
+                    return Ok(cmds);
+                }
+                Token::Path(p) => {
+                    let mut args: Vec<Vec<u8>> = vec![];
+                    while let Some(out) = self.lexer.next() {
+                        match out {
+                            Token::Eps | Token::Pipe => {
+                                break;
+                            }
+                            Token::Path(p) => {
+                                args.push(p);
+                            }
                         }
                     }
+                    cmds.push(match p.as_slice() {
+                        b"cat" => Box::new(CatCmd::new(args)),
+                        b"echo" => Box::new(EchoCmd::new(args)),
+                        b"exit" => Box::new(ExitCmd::new(args)),
+                        b"wc" => Box::new(WcCmd::new(args)),
+                        b"pwd" => Box::new(PwdCmd::new(args)),
+                        p => Box::new(ProcCmd::new(p.to_vec(), args)),
+                    })
                 }
-                Some(vec![match p.as_slice() {
-                    b"cat" => Box::new(CatCmd::new(args)),
-                    b"echo" => Box::new(EchoCmd::new(args)),
-                    b"exit" => Box::new(ExitCmd::new(args)),
-                    b"wc" => Box::new(WcCmd::new(args)),
-                    b"pwd" => Box::new(PwdCmd::new(args)),
-                    p => Box::new(ProcCmd::new(p.to_vec(), args)),
-                }])
+                Token::Pipe => {
+                    return Err(anyhow::anyhow!("syntax error near unexpected token '|'"));
+                }
             }
         }
+        unreachable!()
     }
 }
 

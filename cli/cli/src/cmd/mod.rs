@@ -1,4 +1,4 @@
-use std::io::Write;
+use std::io::{Read, Write};
 
 pub mod cat;
 pub mod echo;
@@ -8,5 +8,5 @@ pub mod pwd;
 pub mod wc;
 
 pub trait Cmd {
-    fn run(&mut self, w: &mut dyn Write) -> anyhow::Result<()>;
+    fn run(&mut self, r: &mut dyn Read, w: &mut dyn Write) -> anyhow::Result<()>;
 }
