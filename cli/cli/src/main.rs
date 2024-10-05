@@ -1,8 +1,13 @@
-use std::io::{self, Write};
+use std::{
+    collections::VecDeque,
+    io::{self, Read, Write},
+    ops::DerefMut,
+};
 
 mod cmd;
 mod syntax;
 
+use anyhow::Ok;
 use cmd::Cmd;
 use syntax::Parser;
 
@@ -31,12 +36,24 @@ impl Prompt {
 
 fn parse_cmds(prompt: &mut Prompt) -> anyhow::Result<Vec<Box<dyn Cmd>>> {
     let mut parser = Parser::new();
-    loop {
-        let nxt_line = prompt.next()?.to_owned();
-        if let Some(parsed_cmds) = parser.feed(nxt_line) {
-            return Ok(parsed_cmds);
-        }
+    return parser.feed(prompt.next()?.to_owned());
+}
+
+fn process(cmds: Vec<Box<dyn Cmd>>) -> anyhow::Result<()> {
+    let mut prev = VecDeque::<u8>::new();
+    let mut next = VecDeque::<u8>::new();
+    let n = cmds.len();
+    for (i, mut cmd) in cmds.into_iter().enumerate() {
+        let r: &mut dyn Read = if i == 0 { &mut io::stdin() } else { &mut prev };
+        let w: &mut dyn Write = if i == n - 1 {
+            &mut io::stdout()
+        } else {
+            &mut next
+        };
+        (*cmd).run(r, w)?;
+        std::mem::swap(&mut prev, &mut next);
     }
+    Ok(())
 }
 
 fn main() {
@@ -47,14 +64,8 @@ fn main() {
             println!("[x] parse error: {}", err);
             continue;
         }
-        let mut cmds = cmds.unwrap();
-        if cmds.len() != 1 {
-            println!("[x] multi commands are not supported");
-            continue;
-        }
-        let res = cmds[0].run(&mut io::stdout());
-        println!();
-        if let Err(err) = res {
+        let cmds = cmds.unwrap();
+        if let Err(err) = process(cmds) {
             println!("[x] error: {}", err);
         }
         io::stdout().flush().expect("flush works");
