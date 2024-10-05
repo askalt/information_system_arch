@@ -34,26 +34,26 @@ impl AddAssign<&Self> for Stat {
 impl WcCmd {
     const STDIN_FNAME: &[u8] = b"-";
 
-    fn get_stat<R: Read>(file: &mut R) -> anyhow::Result<Stat> {
+    fn get_stat(file: &mut dyn Read) -> anyhow::Result<Stat> {
         let mut stat = Stat::default();
         let mut buf = vec![0_u8; 1024];
+        let mut is_space = true;
         loop {
             let n = file.read(&mut buf)?;
             if n == 0 {
                 break;
             }
-            let mut is_space = false;
             for i in 0..n {
                 is_space = if match buf[i] {
                     b'\n' => {
-                        stat.lines = if stat.lines == 0 { 2 } else { stat.lines + 1 };
+                        stat.lines += 1;
                         true
                     }
                     b' ' => true,
                     _ => false,
                 } {
                     if !is_space {
-                        stat.words = if stat.words == 0 { 2 } else { stat.words + 1 };
+                        stat.words += 1;
                     }
                     true
                 } else {
@@ -61,6 +61,9 @@ impl WcCmd {
                 }
             }
             stat.bytes += n;
+        }
+        if !is_space {
+            stat.words += 1;
         }
         Ok(stat)
     }
@@ -93,16 +96,16 @@ impl WcCmd {
 }
 
 impl Cmd for WcCmd {
-    fn run(&mut self, w: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn run(&mut self, r: &mut dyn std::io::Read, w: &mut dyn std::io::Write) -> anyhow::Result<()> {
         if self.args.is_empty() {
-            self.args.push(b"-".to_vec());
+            self.args.push(Self::STDIN_FNAME.to_vec());
         }
         let width = Self::compute_number_width(&self.args)?;
         let mut total_stat = Stat::default();
         for path in self.args.iter() {
             let path_str = str::from_utf8(path.as_slice())?;
             let stat = if path == Self::STDIN_FNAME {
-                Self::get_stat(&mut io::stdin())?
+                Self::get_stat(r)?
             } else {
                 let mut file = File::open(Path::new(path_str))?;
                 Self::get_stat(&mut file)?

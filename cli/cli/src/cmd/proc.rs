@@ -16,7 +16,11 @@ impl ProcCmd {
 }
 
 impl Cmd for ProcCmd {
-    fn run(&mut self, w: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn run(
+        &mut self,
+        _r: &mut dyn std::io::Read,
+        w: &mut dyn std::io::Write,
+    ) -> anyhow::Result<()> {
         let str_args = self
             .args
             .iter()
