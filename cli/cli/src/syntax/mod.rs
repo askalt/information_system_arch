@@ -1,26 +1,65 @@
 use std::collections::VecDeque;
 
 use crate::cmd::{
-    cat::CatCmd, echo::EchoCmd, exit::ExitCmd, proc::ProcCmd, pwd::PwdCmd, wc::WcCmd, Cmd,
+    cat::CatCmd, echo::EchoCmd, exit::ExitCmd, proc::ProcCmd, pwd::PwdCmd, setenv::SetEnvCmd,
+    wc::WcCmd, Cmd,
 };
 
 #[derive(PartialEq, Debug)]
 enum Token {
     Eps,
-    Path(Vec<u8>),
+    Path { src: Vec<u8>, is_lvalue: bool },
     Pipe,
+    SetCmd { lvalue: Vec<u8>, rvalue: Vec<u8> },
+}
+
+impl Token {
+    fn is_ident_char(b: u8) -> bool {
+        b.is_ascii_alphabetic()
+    }
+
+    fn feed(self, b: u8, expect_path: bool) -> Token {
+        match self {
+            Token::Eps => Token::Path {
+                src: vec![b],
+                is_lvalue: Self::is_ident_char(b),
+            },
+            Token::Path { mut src, is_lvalue } => {
+                if b == b'=' && is_lvalue && !expect_path {
+                    Token::SetCmd {
+                        lvalue: src,
+                        rvalue: vec![],
+                    }
+                } else {
+                    src.push(b);
+                    Token::Path {
+                        src: src,
+                        is_lvalue: is_lvalue && Self::is_ident_char(b),
+                    }
+                }
+            }
+            Token::Pipe => unreachable!(),
+            Token::SetCmd { lvalue, mut rvalue } => {
+                rvalue.push(b);
+                Token::SetCmd {
+                    lvalue: lvalue,
+                    rvalue: rvalue,
+                }
+            }
+        }
+    }
 }
 
 struct LexerState {
     escape_next: bool,
     quote: Option<u8>,
+    token: Token,
 }
 
 struct Lexer {
     state: LexerState,
     pos: usize,
     buf: Vec<u8>,
-    acc: Option<Vec<u8>>,
     deffered: VecDeque<Token>,
 }
 
@@ -30,10 +69,10 @@ impl Lexer {
             state: LexerState {
                 escape_next: false,
                 quote: None,
+                token: Token::Eps,
             },
             pos: 0,
             buf: vec![],
-            acc: None,
             deffered: VecDeque::new(),
         }
     }
@@ -43,18 +82,11 @@ impl Lexer {
         self.buf = buf;
     }
 
-    fn push(&mut self, b: u8) {
-        match self.acc {
-            Some(ref mut acc) => {
-                acc.push(b);
-            }
-            None => {
-                self.acc = Some(vec![b]);
-            }
-        }
+    fn push(&mut self, b: u8, expect_path: bool) {
+        self.state.token = self.state.token.feed(b, expect_path)
     }
 
-    fn next(&mut self) -> Option<Token> {
+    fn next(&mut self, expect_path: bool) -> Option<Token> {
         if !self.deffered.is_empty() {
             return self.deffered.pop_front();
         }
@@ -80,21 +112,27 @@ impl Lexer {
                         self.push(b);
                     }
                 } else {
-                    if b == b' ' {
-                        if let Some(ref acc) = self.acc {
-                            return Some(Token::Path(acc.clone()));
+                    match b {
+                        b' ' => {
+                            if let Some(ref acc) = self.acc {
+                                return Some(Token::Path(acc.clone()));
+                            }
                         }
-                    } else if b == b'\'' || b == b'\"' {
-                        self.state.quote = Some(b);
-                    } else if b == b'|' {
-                        if let Some(ref acc) = self.acc {
-                            self.deffered.push_back(Token::Pipe);
-                            return Some(Token::Path(acc.clone()));
-                        } else {
-                            return Some(Token::Pipe);
+                        b'\'' | b'\"' => {
+                            self.state.quote = Some(b);
                         }
-                    } else {
-                        self.push(b);
+                        b'|' => {
+                            if let Some(ref acc) = self.acc {
+                                self.deffered.push_back(Token::Pipe);
+                                return Some(Token::Path(acc.clone()));
+                            } else {
+                                return Some(Token::Pipe);
+                            }
+                        }
+                        b'=' if !expect_path => {}
+                        _ => {
+                            self.push(b);
+                        }
                     }
                 }
             }
@@ -131,25 +169,33 @@ impl Parser {
                     return Ok(cmds);
                 }
                 Token::Path(p) => {
-                    let mut args: Vec<Vec<u8>> = vec![];
-                    while let Some(out) = self.lexer.next() {
-                        match out {
-                            Token::Eps | Token::Pipe => {
-                                break;
-                            }
-                            Token::Path(p) => {
-                                args.push(p);
+                    let pos = p.iter().position(|&r| r == b'=');
+                    let pos = if let Some(pos) = pos { pos } else { 0 };
+                    if pos > 0 {
+                        let lhs = (&p.as_slice()[..pos]).to_vec();
+                        let rhs = (&p.as_slice()[pos + 1..]).to_vec();
+                        cmds.push(Box::new(SetEnvCmd::new(lhs, rhs)));
+                    } else {
+                        let mut args: Vec<Vec<u8>> = vec![];
+                        while let Some(out) = self.lexer.next() {
+                            match out {
+                                Token::Eps | Token::Pipe => {
+                                    break;
+                                }
+                                Token::Path(p) => {
+                                    args.push(p);
+                                }
                             }
                         }
+                        cmds.push(match p.as_slice() {
+                            b"cat" => Box::new(CatCmd::new(args)),
+                            b"echo" => Box::new(EchoCmd::new(args)),
+                            b"exit" => Box::new(ExitCmd::new(args)),
+                            b"wc" => Box::new(WcCmd::new(args)),
+                            b"pwd" => Box::new(PwdCmd::new(args)),
+                            p => Box::new(ProcCmd::new(p.to_vec(), args)),
+                        })
                     }
-                    cmds.push(match p.as_slice() {
-                        b"cat" => Box::new(CatCmd::new(args)),
-                        b"echo" => Box::new(EchoCmd::new(args)),
-                        b"exit" => Box::new(ExitCmd::new(args)),
-                        b"wc" => Box::new(WcCmd::new(args)),
-                        b"pwd" => Box::new(PwdCmd::new(args)),
-                        p => Box::new(ProcCmd::new(p.to_vec(), args)),
-                    })
                 }
                 Token::Pipe => {
                     return Err(anyhow::anyhow!("syntax error near unexpected token '|'"));
