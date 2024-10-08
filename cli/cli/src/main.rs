@@ -1,7 +1,6 @@
 use std::{
     collections::VecDeque,
     io::{self, Read, Write},
-    ops::DerefMut,
 };
 
 mod cmd;
@@ -36,7 +35,13 @@ impl Prompt {
 
 fn parse_cmds(prompt: &mut Prompt) -> anyhow::Result<Vec<Box<dyn Cmd>>> {
     let mut parser = Parser::new();
-    return parser.feed(prompt.next()?.to_owned());
+    loop {
+        let (cmds, next_parser) = parser.feed(prompt.next()?.to_owned());
+        if cmds.is_some() {
+            return cmds.unwrap();
+        }
+        parser = next_parser.unwrap();
+    }
 }
 
 fn process(cmds: Vec<Box<dyn Cmd>>) -> anyhow::Result<()> {
