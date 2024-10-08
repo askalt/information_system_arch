@@ -5,6 +5,7 @@ pub mod echo;
 pub mod exit;
 pub mod proc;
 pub mod pwd;
+pub mod setenv;
 pub mod wc;
 
 pub trait Cmd {
