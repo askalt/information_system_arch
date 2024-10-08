@@ -1,13 +1,15 @@
 use std::io::{Read, Write};
 
+use env::Env;
+
 pub mod cat;
 pub mod echo;
 pub mod exit;
 pub mod proc;
 pub mod pwd;
-pub mod setenv;
 pub mod wc;
-pub mod noop;
+pub mod assign;
+pub mod env;
 
 #[derive(Clone)]
 pub struct EnvAssign {
@@ -22,5 +24,5 @@ impl EnvAssign {
 }
 
 pub trait Cmd {
-    fn run(&mut self, r: &mut dyn Read, w: &mut dyn Write) -> anyhow::Result<()>;
+    fn run(&mut self, r: &mut dyn Read, w: &mut dyn Write, env: &mut Env) -> anyhow::Result<()>;
 }

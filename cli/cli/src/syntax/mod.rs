@@ -1,16 +1,26 @@
 use std::collections::VecDeque;
 
 use crate::cmd::{
-    cat::CatCmd, echo::EchoCmd, exit::ExitCmd, noop::NoopCmd, proc::ProcCmd, pwd::PwdCmd,
+    cat::CatCmd, echo::EchoCmd, env::Env, exit::ExitCmd, assign::AssignCmd, proc::ProcCmd, pwd::PwdCmd,
     wc::WcCmd, Cmd, EnvAssign,
 };
+
+const SUB_SIGN: u8 = b'$';
 
 #[derive(PartialEq, Debug, Clone)]
 enum Token {
     Eps,
-    Path { src: Vec<u8>, is_lvalue: bool },
+    Path {
+        src: Vec<u8>,
+        sub: Option<Vec<u8>>,
+        is_lvalue: bool,
+    },
     Pipe,
-    SetCmd { lvalue: Vec<u8>, rvalue: Vec<u8> },
+    SetCmd {
+        lvalue: Vec<u8>,
+        rvalue: Vec<u8>,
+        sub: Option<Vec<u8>>,
+    },
 }
 
 impl Token {
@@ -18,34 +28,159 @@ impl Token {
         b.is_ascii_alphabetic()
     }
 
-    fn feed(self, b: u8, expect_path: bool) -> Token {
+    fn feed(self, b: u8, expect_path: bool, env: &Env) -> Token {
         match self {
-            Token::Eps => Token::Path {
-                src: vec![b],
-                is_lvalue: Self::is_ident_char(b),
+            Token::Eps => match b {
+                SUB_SIGN => Token::Path {
+                    src: vec![],
+                    sub: Some(vec![]),
+                    is_lvalue: false,
+                },
+                b => Token::Path {
+                    src: vec![b],
+                    sub: None,
+                    is_lvalue: Self::is_ident_char(b),
+                },
             },
-            Token::Path { mut src, is_lvalue } => {
-                if b == b'=' && is_lvalue && !expect_path {
-                    Token::SetCmd {
-                        lvalue: src,
-                        rvalue: vec![],
+            Token::Path {
+                mut src,
+                sub,
+                is_lvalue,
+            } => match sub {
+                Some(mut sub) => {
+                    if Self::is_ident_char(b) {
+                        sub.push(b);
+                        Token::Path {
+                            src: src,
+                            sub: Some(sub),
+                            is_lvalue: is_lvalue,
+                        }
+                    } else {
+                        /* Perform substitution. */
+                        let mut sub = env.get(sub);
+                        src.append(&mut sub);
+                        assert!(!is_lvalue);
+                        if b != SUB_SIGN {
+                            src.push(b);
+                        }
+                        Token::Path {
+                            src: src,
+                            sub: if b == SUB_SIGN { Some(vec![]) } else { None },
+                            is_lvalue: is_lvalue,
+                        }
                     }
-                } else {
-                    src.push(b);
+                }
+                None => {
+                    if b == b'=' && is_lvalue && !expect_path {
+                        Token::SetCmd {
+                            lvalue: src,
+                            rvalue: vec![],
+                            sub: None,
+                        }
+                    } else if b == SUB_SIGN {
+                        Token::Path {
+                            src: src,
+                            sub: Some(vec![]),
+                            is_lvalue: false,
+                        }
+                    } else {
+                        src.push(b);
+                        Token::Path {
+                            src: src,
+                            sub: None,
+                            is_lvalue: is_lvalue && Self::is_ident_char(b),
+                        }
+                    }
+                }
+            },
+            Token::SetCmd {
+                lvalue,
+                mut rvalue,
+                sub,
+            } => match sub {
+                Some(mut sub) => {
+                    if Self::is_ident_char(b) {
+                        sub.push(b);
+                        Token::SetCmd {
+                            lvalue: lvalue,
+                            rvalue: rvalue,
+                            sub: Some(sub),
+                        }
+                    } else {
+                        /* Perform substitution. */
+                        let mut sub = env.get(sub);
+                        rvalue.append(&mut sub);
+                        if b != SUB_SIGN {
+                            /* a=$b* */
+                            rvalue.push(b);
+                        }
+                        Token::SetCmd {
+                            lvalue: lvalue,
+                            rvalue: rvalue,
+                            sub: if b == SUB_SIGN { Some(vec![]) } else { None },
+                        }
+                    }
+                }
+                None => {
+                    rvalue.push(b);
+                    Token::SetCmd {
+                        lvalue: lvalue,
+                        rvalue: rvalue,
+                        sub: None,
+                    }
+                }
+            },
+            Token::Pipe => unreachable!(),
+        }
+    }
+
+    fn finalize(self, env: &Env) -> Self {
+        match self {
+            Token::Eps => Token::Eps,
+            Token::Path {
+                mut src,
+                sub,
+                is_lvalue,
+            } => match sub {
+                Some(sub) => {
+                    /* Perform substitution. */
+                    let mut sub = env.get(sub);
+                    src.append(&mut sub);
+                    assert!(!is_lvalue);
                     Token::Path {
                         src: src,
-                        is_lvalue: is_lvalue && Self::is_ident_char(b),
+                        sub: None,
+                        is_lvalue: is_lvalue,
                     }
                 }
-            }
-            Token::Pipe => unreachable!(),
-            Token::SetCmd { lvalue, mut rvalue } => {
-                rvalue.push(b);
-                Token::SetCmd {
+                None => Token::Path {
+                    src: src,
+                    sub: sub,
+                    is_lvalue: is_lvalue,
+                },
+            },
+            Token::SetCmd {
+                lvalue,
+                mut rvalue,
+                sub,
+            } => match sub {
+                Some(sub) => {
+                    /* Perform substitution. */
+                    let mut sub = env.get(sub);
+                    rvalue.append(&mut sub);
+                    Token::SetCmd {
+                        lvalue: lvalue,
+                        rvalue: rvalue,
+                        sub: None,
+                    }
+                }
+                None => Token::SetCmd {
                     lvalue: lvalue,
                     rvalue: rvalue,
-                }
-            }
+                    sub: sub,
+                },
+            },
+            Token::Pipe => unreachable!(),
         }
     }
 }
@@ -66,20 +201,22 @@ impl Default for LexerState {
     }
 }
 
-struct Lexer {
+struct Lexer<'a> {
     state: LexerState,
     pos: usize,
     buf: Vec<u8>,
     deffered: VecDeque<Token>,
+    env: &'a Env,
 }
 
-impl Lexer {
-    fn new() -> Self {
+impl<'a> Lexer<'a> {
+    fn new(env: &'a Env) -> Self {
         Self {
             state: Default::default(),
             pos: 0,
             buf: vec![],
             deffered: VecDeque::new(),
+            env: env,
         }
     }
 
@@ -102,7 +239,7 @@ impl Lexer {
             self.pos += 1;
             match self.state.escape_next {
                 true => {
-                    self.state.token = self.state.token.feed(b, expect_path);
+                    self.state.token = self.state.token.feed(b, expect_path, self.env);
                 }
                 false => {
                     match self.state.quote {
@@ -114,6 +251,7 @@ impl Lexer {
                                         self.state.token = Token::Path {
                                             src: vec![],
                                             is_lvalue: false,
+                                            sub: None,
                                         }
                                     }
                                     /* Nothing changes for other states. */
@@ -121,35 +259,41 @@ impl Lexer {
                                     Token::Pipe => unreachable!(),
                                 }
                             } else {
-                                self.state.token = self.state.token.feed(b, expect_path);
+                                self.state.token = self.state.token.feed(b, expect_path, self.env);
                             }
                         }
                         None => match b {
-                            b' ' => match self.state.token {
-                                Token::Eps => {
-                                    continue;
+                            b' ' => {
+                                self.state.token = self.state.token.finalize(self.env);
+                                match self.state.token {
+                                    Token::Eps => {
+                                        continue;
+                                    }
+                                    Token::SetCmd { .. } | Token::Path { .. } => {
+                                        return (Some(self.state.token.clone()), self);
+                                    }
+                                    Token::Pipe => unreachable!(),
                                 }
-                                Token::SetCmd { .. } | Token::Path { .. } => {
-                                    return (Some(self.state.token.clone()), self);
-                                }
-                                Token::Pipe => unreachable!(),
-                            },
+                            }
                             b'\\' => {
                                 self.state.escape_next = true;
                             }
                             b'\'' | b'\"' => {
                                 self.state.quote = Some(b);
                             }
-                            b'|' => match self.state.token {
-                                Token::Eps => return (Some(Token::Pipe), self),
-                                Token::SetCmd { .. } | Token::Path { .. } => {
-                                    self.deffered.push_back(Token::Pipe);
-                                    return (Some(self.state.token.clone()), self);
+                            b'|' => {
+                                self.state.token = self.state.token.finalize(&self.env);
+                                match self.state.token {
+                                    Token::Eps => return (Some(Token::Pipe), self),
+                                    Token::SetCmd { .. } | Token::Path { .. } => {
+                                        self.deffered.push_back(Token::Pipe);
+                                        return (Some(self.state.token.clone()), self);
+                                    }
+                                    Token::Pipe => unreachable!(),
                                 }
-                                Token::Pipe => unreachable!(),
-                            },
+                            }
                             _ => {
-                                self.state.token = self.state.token.feed(b, expect_path);
+                                self.state.token = self.state.token.feed(b, expect_path, self.env);
                             }
                         },
                     }
@@ -162,6 +306,7 @@ impl Lexer {
                 /* Wait for another characters. */
                 None
             } else {
+                self.state.token = self.state.token.finalize(&self.env);
                 Some(self.state.token.clone())
             },
             self,
@@ -184,16 +329,16 @@ enum ParserState {
     },
 }
 
-pub struct Parser {
-    lexer: Lexer,
+pub struct Parser<'a> {
+    lexer: Lexer<'a>,
     state: ParserState,
     cmds: Vec<Box<dyn Cmd>>,
 }
 
-impl Parser {
-    pub fn new() -> Self {
+impl<'a> Parser<'a> {
+    pub fn new(env: &'a Env) -> Self {
         Self {
-            lexer: Lexer::new(),
+            lexer: Lexer::new(env),
             state: ParserState::Init { piped: false },
             cmds: vec![],
         }
@@ -264,7 +409,7 @@ impl Parser {
                                 args: vec![],
                             };
                         }
-                        Token::SetCmd { lvalue, rvalue } => {
+                        Token::SetCmd { lvalue, rvalue, .. } => {
                             self.state = ParserState::Assigns {
                                 assigns: vec![EnvAssign::new(lvalue, rvalue)],
                             };
@@ -273,10 +418,14 @@ impl Parser {
                     /* Assigns. */
                     ParserState::Assigns { mut assigns } => match token {
                         Token::Eps => {
+                            if self.cmds.is_empty() {
+                                /* Only when we do assigns for global env. */
+                                self.cmds.push(Box::new(AssignCmd::new(assigns)));
+                            }
                             return (Some(Ok(self.cmds)), None);
                         }
                         Token::Pipe => {
-                            self.cmds.push(Box::new(NoopCmd::new()));
+                            self.cmds.push(Box::new(AssignCmd::new(vec![])));
                             self.state = ParserState::Init { piped: false };
                         }
                         Token::Path { src, .. } => {
@@ -286,7 +435,7 @@ impl Parser {
                                 args: vec![],
                             };
                         }
-                        Token::SetCmd { lvalue, rvalue } => {
+                        Token::SetCmd { lvalue, rvalue, .. } => {
                             assigns.push(EnvAssign::new(lvalue, rvalue));
                             self.state = ParserState::Assigns { assigns: assigns };
                         }
@@ -327,14 +476,15 @@ impl Parser {
 
 #[cfg(test)]
 mod tests {
-    use crate::syntax::Token;
+    use crate::{cmd::env::Env, syntax::Token};
 
     use super::Lexer;
 
     #[test]
     fn test_lexer_simple() {
         let line = b"    awda75 awdwe llllplk  ".to_vec();
-        let lexer = Lexer::new();
+        let env = Env::new();
+        let lexer = Lexer::new(&env);
 
         let (actual, mut lexer) = lexer.next(true);
         assert_eq!(actual, Some(Token::Eps));
@@ -345,7 +495,8 @@ mod tests {
             actual,
             Some(Token::Path {
                 src: b"awda75".to_vec(),
-                is_lvalue: false
+                is_lvalue: false,
+                sub: None,
             })
         );
 
@@ -354,7 +505,8 @@ mod tests {
             actual,
             Some(Token::Path {
                 src: b"awdwe".to_vec(),
-                is_lvalue: true
+                is_lvalue: true,
+                sub: None,
             })
         );
 
@@ -363,7 +515,8 @@ mod tests {
             actual,
             Some(Token::Path {
                 src: b"llllplk".to_vec(),
-                is_lvalue: true
+                is_lvalue: true,
+                sub: None,
             })
         );
 
@@ -374,7 +527,8 @@ mod tests {
     #[test]
     fn test_lexer_expect_next() {
         let mut line = b"    awda75 \"wdwdw  ".to_vec();
-        let lexer = Lexer::new();
+        let env = Env::new();
+        let lexer = Lexer::new(&env);
 
         let (actual, mut lexer) = lexer.next(true);
         assert_eq!(actual, Some(Token::Eps));
@@ -385,7 +539,8 @@ mod tests {
             actual,
             Some(Token::Path {
                 src: b"awda75".to_vec(),
-                is_lvalue: false
+                is_lvalue: false,
+                sub: None,
             })
         );
         let (actual, lexer) = lexer.next(true);
@@ -400,7 +555,8 @@ mod tests {
             actual,
             Some(Token::Path {
                 src: b"wdwdw   awdwd".to_vec(),
-                is_lvalue: false
+                is_lvalue: false,
+                sub: None,
             })
         );
         let (actual, mut lexer) = lexer.next(true);
@@ -418,7 +574,8 @@ mod tests {
             actual,
             Some(Token::Path {
                 src: b"wdwdw   awdwd".to_vec(),
-                is_lvalue: false
+                is_lvalue: false,
+                sub: None,
             })
         );
         let (actual, _) = lexer.next(true);

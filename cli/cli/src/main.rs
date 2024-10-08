@@ -7,7 +7,7 @@ mod cmd;
 mod syntax;
 
 use anyhow::Ok;
-use cmd::Cmd;
+use cmd::{env::Env, Cmd};
 use syntax::Parser;
 
 struct Prompt {
@@ -33,8 +33,8 @@ impl Prompt {
     }
 }
 
-fn parse_cmds(prompt: &mut Prompt) -> anyhow::Result<Vec<Box<dyn Cmd>>> {
-    let mut parser = Parser::new();
+fn parse_cmds(prompt: &mut Prompt, env: &Env) -> anyhow::Result<Vec<Box<dyn Cmd>>> {
+    let mut parser = Parser::new(env);
     loop {
         let (cmds, next_parser) = parser.feed(prompt.next()?.to_owned());
         if cmds.is_some() {
@@ -44,7 +44,7 @@ fn parse_cmds(prompt: &mut Prompt) -> anyhow::Result<Vec<Box<dyn Cmd>>> {
     }
 }
 
-fn process(cmds: Vec<Box<dyn Cmd>>) -> anyhow::Result<()> {
+fn process(cmds: Vec<Box<dyn Cmd>>, env: &mut Env) -> anyhow::Result<()> {
     let mut prev = VecDeque::<u8>::new();
     let mut next = VecDeque::<u8>::new();
     let n = cmds.len();
@@ -55,7 +55,7 @@ fn process(cmds: Vec<Box<dyn Cmd>>) -> anyhow::Result<()> {
         } else {
             &mut next
         };
-        (*cmd).run(r, w)?;
+        (*cmd).run(r, w, env)?;
         std::mem::swap(&mut prev, &mut next);
     }
     Ok(())
@@ -63,14 +63,21 @@ fn process(cmds: Vec<Box<dyn Cmd>>) -> anyhow::Result<()> {
 
 fn main() {
     let mut prompt = Prompt::new();
+    let mut env = Env::new();
+    /* Inherit parent env. */
+    for (k, v) in std::env::vars() {
+        env.set(k.into_bytes(), v.into_bytes());
+    }
+    env.set("a".into(), "ex".into());
+    env.set("b".into(), "it".into());
     loop {
-        let cmds = parse_cmds(&mut prompt);
+        let cmds = parse_cmds(&mut prompt, &env);
         if let Err(err) = cmds {
             println!("[x] parse error: {}", err);
             continue;
         }
         let cmds = cmds.unwrap();
-        if let Err(err) = process(cmds) {
+        if let Err(err) = process(cmds, &mut env) {
             println!("[x] error: {}", err);
         }
         io::stdout().flush().expect("flush works");

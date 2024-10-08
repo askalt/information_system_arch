@@ -2,6 +2,7 @@ use core::str;
 use std::io::Read;
 use std::process::{Command, Stdio};
 
+use super::env::Env;
 use super::{Cmd, EnvAssign};
 
 pub struct ProcCmd {
@@ -22,6 +23,7 @@ impl Cmd for ProcCmd {
         &mut self,
         _r: &mut dyn std::io::Read,
         w: &mut dyn std::io::Write,
+        env: &mut Env,
     ) -> anyhow::Result<()> {
         let str_args = self
             .args

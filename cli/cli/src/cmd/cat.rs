@@ -1,3 +1,4 @@
+use super::env::Env;
 use super::Cmd;
 use core::str;
 use std::fs::File;
@@ -16,7 +17,12 @@ impl CatCmd {
 }
 
 impl Cmd for CatCmd {
-    fn run(&mut self, r: &mut dyn std::io::Read, w: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn run(
+        &mut self,
+        r: &mut dyn std::io::Read,
+        w: &mut dyn std::io::Write,
+        env: &mut Env,
+    ) -> anyhow::Result<()> {
         if self.args.is_empty() {
             self.args.push(b"-".to_vec());
         }
