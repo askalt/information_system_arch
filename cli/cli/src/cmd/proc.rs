@@ -2,16 +2,18 @@ use core::str;
 use std::io::Read;
 use std::process::{Command, Stdio};
 
-use super::Cmd;
+use super::{Cmd, EnvAssign};
 
 pub struct ProcCmd {
     cmd_path: Vec<u8>,
     args: Vec<Vec<u8>>,
+    /* Assigns to perform before execution. */
+    assigns: Vec<EnvAssign>,
 }
 
 impl ProcCmd {
-    pub fn new(cmd_path: Vec<u8>, args: Vec<Vec<u8>>) -> Self {
-        Self { cmd_path, args }
+    pub fn new(cmd_path: Vec<u8>, args: Vec<Vec<u8>>, assigns: Vec<EnvAssign>) -> Self {
+        Self { cmd_path, args, assigns: assigns }
     }
 }
 
