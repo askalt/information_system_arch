@@ -1,6 +1,6 @@
 use std::{env, os::unix::ffi::OsStrExt};
 
-use super::Cmd;
+use super::{env::Env, Cmd};
 
 pub struct PwdCmd {}
 
@@ -15,6 +15,7 @@ impl Cmd for PwdCmd {
         &mut self,
         _r: &mut dyn std::io::Read,
         w: &mut dyn std::io::Write,
+        _env: &mut Env,
     ) -> anyhow::Result<()> {
         let dir = env::current_dir()?;
         w.write(dir.as_os_str().as_bytes())?;

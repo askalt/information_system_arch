@@ -4,6 +4,7 @@ use std::io::{self, Read};
 use std::ops::AddAssign;
 use std::path::Path;
 
+use super::env::Env;
 use super::Cmd;
 
 pub struct WcCmd {
@@ -96,7 +97,12 @@ impl WcCmd {
 }
 
 impl Cmd for WcCmd {
-    fn run(&mut self, r: &mut dyn std::io::Read, w: &mut dyn std::io::Write) -> anyhow::Result<()> {
+    fn run(
+        &mut self,
+        r: &mut dyn std::io::Read,
+        w: &mut dyn std::io::Write,
+        env: &mut Env,
+    ) -> anyhow::Result<()> {
         if self.args.is_empty() {
             self.args.push(Self::STDIN_FNAME.to_vec());
         }

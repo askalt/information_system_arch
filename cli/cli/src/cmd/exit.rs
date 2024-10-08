@@ -1,6 +1,6 @@
 use std::process;
 
-use super::Cmd;
+use super::{env::Env, Cmd};
 
 pub struct ExitCmd {}
 
@@ -15,6 +15,7 @@ impl Cmd for ExitCmd {
         &mut self,
         _r: &mut dyn std::io::Read,
         w: &mut dyn std::io::Write,
+        env: &mut Env,
     ) -> anyhow::Result<()> {
         w.write(b"\n")?;
         process::exit(0);

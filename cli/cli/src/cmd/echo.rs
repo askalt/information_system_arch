@@ -1,4 +1,4 @@
-use super::Cmd;
+use super::{env::Env, Cmd};
 
 pub struct EchoCmd {
     args: Vec<Vec<u8>>,
@@ -15,6 +15,7 @@ impl Cmd for EchoCmd {
         &mut self,
         _r: &mut dyn std::io::Read,
         w: &mut dyn std::io::Write,
+        env: &mut Env,
     ) -> anyhow::Result<()> {
         for (i, arg) in self.args.iter().enumerate() {
             if i > 0 {
