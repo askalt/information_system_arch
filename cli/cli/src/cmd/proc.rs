@@ -9,12 +9,16 @@ pub struct ProcCmd {
     cmd_path: Vec<u8>,
     args: Vec<Vec<u8>>,
     /* Assigns to perform before execution. */
-    assigns: Vec<EnvAssign>,
+    _assigns: Vec<EnvAssign>,
 }
 
 impl ProcCmd {
     pub fn new(cmd_path: Vec<u8>, args: Vec<Vec<u8>>, assigns: Vec<EnvAssign>) -> Self {
-        Self { cmd_path, args, assigns: assigns }
+        Self {
+            cmd_path,
+            args,
+            _assigns: assigns,
+        }
     }
 }
 
@@ -23,7 +27,7 @@ impl Cmd for ProcCmd {
         &mut self,
         _r: &mut dyn std::io::Read,
         w: &mut dyn std::io::Write,
-        env: &mut Env,
+        _env: &mut Env,
     ) -> anyhow::Result<()> {
         let str_args = self
             .args

@@ -1,5 +1,6 @@
 use std::{
     collections::VecDeque,
+    env,
     io::{self, Read, Write},
 };
 
@@ -63,13 +64,11 @@ fn process(cmds: Vec<Box<dyn Cmd>>, env: &mut Env) -> anyhow::Result<()> {
 
 fn main() {
     let mut prompt = Prompt::new();
-    let mut env = Env::new();
+    let mut env = Env::new(env::current_dir().unwrap());
     /* Inherit parent env. */
     for (k, v) in std::env::vars() {
-        env.set(k.into_bytes(), v.into_bytes());
+        env.set_var(k.into_bytes(), v.into_bytes());
     }
-    env.set("a".into(), "ex".into());
-    env.set("b".into(), "it".into());
     loop {
         let cmds = parse_cmds(&mut prompt, &env);
         if let Err(err) = cmds {

@@ -1,9 +1,11 @@
 use super::{env::Env, Cmd, EnvAssign};
-pub struct AssignCmd { assigns: Vec<EnvAssign> }
+pub struct AssignCmd {
+    assigns: Vec<EnvAssign>,
+}
 
 impl AssignCmd {
     pub fn new(assigns: Vec<EnvAssign>) -> Self {
-        Self {assigns: assigns}
+        Self { assigns: assigns }
     }
 }
 
@@ -15,7 +17,7 @@ impl Cmd for AssignCmd {
         env: &mut Env,
     ) -> anyhow::Result<()> {
         for assign in self.assigns.iter() {
-            env.set(assign.lvalue.clone(), assign.rvalue.clone());
+            env.set_var(assign.lvalue.clone(), assign.rvalue.clone());
         }
         Ok(())
     }

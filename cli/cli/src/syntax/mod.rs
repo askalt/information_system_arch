@@ -1,8 +1,8 @@
 use std::collections::VecDeque;
 
 use crate::cmd::{
-    cat::CatCmd, echo::EchoCmd, env::Env, exit::ExitCmd, assign::AssignCmd, proc::ProcCmd, pwd::PwdCmd,
-    wc::WcCmd, Cmd, EnvAssign,
+    assign::AssignCmd, cat::CatCmd, cd::CdCmd, echo::EchoCmd, env::Env, exit::ExitCmd, ls::LsCmd,
+    proc::ProcCmd, pwd::PwdCmd, wc::WcCmd, Cmd, EnvAssign,
 };
 
 const SUB_SIGN: u8 = b'$';
@@ -57,7 +57,7 @@ impl Token {
                         }
                     } else {
                         /* Perform substitution. */
-                        let mut sub = env.get(sub);
+                        let mut sub = env.get_var(sub);
                         src.append(&mut sub);
                         assert!(!is_lvalue);
                         if b != SUB_SIGN {
@@ -108,7 +108,7 @@ impl Token {
                         }
                     } else {
                         /* Perform substitution. */
-                        let mut sub = env.get(sub);
+                        let mut sub = env.get_var(sub);
                         rvalue.append(&mut sub);
                         if b != SUB_SIGN {
                             /* a=$b* */
@@ -144,7 +144,7 @@ impl Token {
             } => match sub {
                 Some(sub) => {
                     /* Perform substitution. */
-                    let mut sub = env.get(sub);
+                    let mut sub = env.get_var(sub);
                     src.append(&mut sub);
                     assert!(!is_lvalue);
                     Token::Path {
@@ -166,7 +166,7 @@ impl Token {
             } => match sub {
                 Some(sub) => {
                     /* Perform substitution. */
-                    let mut sub = env.get(sub);
+                    let mut sub = env.get_var(sub);
                     rvalue.append(&mut sub);
                     Token::SetCmd {
                         lvalue: lvalue,
@@ -356,6 +356,8 @@ impl<'a> Parser<'a> {
             b"exit" => Box::new(ExitCmd::new(args)),
             b"wc" => Box::new(WcCmd::new(args)),
             b"pwd" => Box::new(PwdCmd::new(args)),
+            b"ls" => Box::new(LsCmd::new(args)),
+            b"cd" => Box::new(CdCmd::new(args)),
             p => Box::new(ProcCmd::new(p.to_vec(), args, assigns.clone())),
         }
     }
@@ -476,6 +478,8 @@ impl<'a> Parser<'a> {
 
 #[cfg(test)]
 mod tests {
+    use std::path::PathBuf;
+
     use crate::{cmd::env::Env, syntax::Token};
 
     use super::Lexer;
@@ -483,7 +487,7 @@ mod tests {
     #[test]
     fn test_lexer_simple() {
         let line = b"    awda75 awdwe llllplk  ".to_vec();
-        let env = Env::new();
+        let env = Env::new(PathBuf::new());
         let lexer = Lexer::new(&env);
 
         let (actual, mut lexer) = lexer.next(true);
@@ -527,7 +531,7 @@ mod tests {
     #[test]
     fn test_lexer_expect_next() {
         let mut line = b"    awda75 \"wdwdw  ".to_vec();
-        let env = Env::new();
+        let env = Env::new(PathBuf::new());
         let lexer = Lexer::new(&env);
 
         let (actual, mut lexer) = lexer.next(true);
