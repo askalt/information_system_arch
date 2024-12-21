@@ -1,5 +1,6 @@
 #pragma once
 
+#include <thread>
 #include <unordered_map>
 
 #include "curses.h"
@@ -13,8 +14,8 @@
   }
 
 /* Console sizes. */
-const size_t W = 300;
-const size_t H = 200;
+const size_t W = 200;
+const size_t H = 100;
 
 /* Game field sizes. */
 const size_t W_FIELD = 150;
@@ -26,6 +27,7 @@ void init_UI(int argc, char *argv[]) {
 #else
   initscr();
 #endif
+  noecho();
   resize_term(H, W);
 }
 
@@ -39,7 +41,7 @@ struct GameUI {
   GameUI(std::shared_ptr<const IGameState> state) : state(std::move(state)) {}
 
   void draw() {
-    safe_call(clear);
+    safe_call(erase);
     draw_border();
     const auto objects = state->get_objects();
 
@@ -54,10 +56,12 @@ struct GameUI {
       }
     }
 
+    move(H_FIELD, 0);
     refresh();
   }
 
   Event next() {
+    flushinp();
     getch();
     return Event{.game_event =
                      GameState::Event{
@@ -79,7 +83,6 @@ struct GameUI {
     mvaddch(H_FIELD - 1, 0, '*');
     for (size_t i = 0; i < W_FIELD - 2; ++i) addch('-');
     addch('*');
-    refresh();
   }
 
   std::shared_ptr<const IGameState> state;

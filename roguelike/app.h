@@ -5,6 +5,7 @@ struct App {
 
   int run() {
     while (true) {
+      game_ui.draw();
       auto event = game_ui.next();
       switch (event.type) {
         case EventType::System: {
@@ -18,7 +19,6 @@ struct App {
         default:
           break;
       }
-      game_ui.draw();
     }
     return 0;
   }
