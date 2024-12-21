@@ -3,7 +3,7 @@
 struct App {
   App() : state{}, game_ui(state) {}
 
-  void run() {
+  int run() {
     while (true) {
       auto event = game_ui.next();
       switch (event.type) {
@@ -20,6 +20,7 @@ struct App {
       }
       game_ui.draw();
     }
+    return 0;
   }
 
  private:

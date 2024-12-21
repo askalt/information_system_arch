@@ -1,6 +1,12 @@
 #include "app.h"
+#include "curses.h"
 
-int main() {
+int main(int argc, char *argv[]) {
+#ifdef XCURSES
+  Xinitscr(argc, argv);
+#else
+  initscr();
+#endif
   auto app = App{};
-  app.run();
+  return app.run();
 }
