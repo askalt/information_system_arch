@@ -11,6 +11,9 @@ struct IGameState {
     CHEST,
     STONE,
     ENTER,
+    HORIZONTAL_BORDER,
+    VERTICAL_BORDER,
+    CORNER,
   };
 
   struct Object {

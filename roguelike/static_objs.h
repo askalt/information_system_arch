@@ -1,3 +1,4 @@
+#pragma once
 #include "entities.h"
 
 struct Map;
@@ -39,4 +40,13 @@ struct Enter : IGameState::Object {
   std::string_view label;
   // Each enter leads to the map.
   Map* map;
+};
+
+struct Border : IGameState::Object {
+  Border(int x, int y, IGameState::ObjectDescriptor descriptor)
+      : Object{x, y}, descriptor{descriptor} {}
+  IGameState::ObjectDescriptor get_descriptor() const override {
+    return descriptor;
+  }
+  IGameState::ObjectDescriptor descriptor;
 };
