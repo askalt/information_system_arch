@@ -51,6 +51,9 @@ const std::unordered_map<IGameState::ObjectDescriptor, char>
         {IGameState::ObjectDescriptor::CHEST, '@'},
         {IGameState::ObjectDescriptor::STONE, '#'},
         {IGameState::ObjectDescriptor::ENTER, 'E'},
+        {IGameState::ObjectDescriptor::HORIZONTAL_BORDER, '-'},
+        {IGameState::ObjectDescriptor::VERTICAL_BORDER, '|'},
+        {IGameState::ObjectDescriptor::CORNER, '+'},
 };
 
 int rem(int a, int mod) {
@@ -93,6 +96,12 @@ std::string make_object_info(IGameState::Object *object) {
     }
     case IGameState::ObjectDescriptor::ENTER: {
       ss << "enter";
+      break;
+    }
+    case IGameState::ObjectDescriptor::CORNER:
+    case IGameState::ObjectDescriptor::HORIZONTAL_BORDER:
+    case IGameState::ObjectDescriptor::VERTICAL_BORDER: {
+      ss << "nil";
       break;
     }
     default:
@@ -202,7 +211,7 @@ struct GameUI {
 
   // Draws a field.
   void draw_field(int start_x) {
-    draw_border(start_x);
+    // draw_border(start_x);
 
     auto player = state->get_player();
     auto [player_x, player_y] = player->get_pos();

@@ -1,3 +1,4 @@
+#pragma once
 
 // System event:
 // - game over
