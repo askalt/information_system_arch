@@ -9,7 +9,7 @@ $ apt-get install libsdl2-dev
 Build PDCurses:
 ```sh
 $ git clone git@github.com:wmcbrine/PDCurses.git
-$ cd PDCurses/sdl2/ && make
+$ cd PDCurses/sdl2/ && make DLL=Y
 ```
 
 To build app:
