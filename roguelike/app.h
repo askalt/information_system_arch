@@ -1,7 +1,7 @@
 #include "game_ui.h"
 
 struct App {
-  App() : state{}, game_ui(state) {}
+  App() : state{std::make_shared<GameState>()}, game_ui{state} {}
 
   int run() {
     while (true) {
@@ -12,7 +12,7 @@ struct App {
           break;
         }
         case EventType::Game: {
-          state.apply(event.game_event);
+          state->apply(event.game_event);
           break;
         }
         default:
@@ -24,6 +24,6 @@ struct App {
   }
 
  private:
+  std::shared_ptr<GameState> state;
   GameUI game_ui;
-  GameState state;
 };

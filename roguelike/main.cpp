@@ -2,11 +2,7 @@
 #include "curses.h"
 
 int main(int argc, char *argv[]) {
-#ifdef XCURSES
-  Xinitscr(argc, argv);
-#else
-  initscr();
-#endif
+  init_UI(argc, argv);
   auto app = App{};
   return app.run();
 }
