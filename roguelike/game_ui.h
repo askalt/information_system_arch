@@ -61,7 +61,7 @@ int rem(int a, int mod) {
 }
 
 std::pair<int, int> get_bounds(int x, int width) {
-  if (x > 0) {
+  if (x >= 0) {
     int div = x / width;
     return {div * width, (div + 1) * width};
   }
