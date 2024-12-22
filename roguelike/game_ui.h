@@ -170,6 +170,8 @@ struct GameUI {
         case 's':
         case 'S':
           return {GameState::PlayerMoveEvent::Down};
+        case KEY_ENTER:
+          return {GameState::EnterEvent{}};
         default:
           return {GameState::NoOpEvent{}};
       }
