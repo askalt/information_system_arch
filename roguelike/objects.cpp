@@ -5,17 +5,42 @@
 
 #include "map.h"
 
+int get_exp_by_lvl(int lvl) {
+  int p = 15;
+  while (lvl > 0) {
+    p = static_cast<int>(1.5 * p);
+    lvl--;
+  }
+  return p;
+}
+
+/* LVL impl. */
+Level::Level() : lvl{0}, exp{0}, lvl_exp{get_exp_by_lvl(0)} {}
+
+int Level::get_exp() const { return exp; }
+
+int Level::get_lvl() const { return lvl; }
+
+int Level::get_lvl_exp() const { return lvl_exp; }
+
+void Level::add_exp(int count) {
+  exp += count;
+  while (exp >= lvl_exp) {
+    exp -= lvl_exp;
+    lvl++;
+    lvl_exp = get_exp_by_lvl(lvl);
+  }
+}
+
 /* Player impl. */
 Player::Player(int x, int y, int health, int max_health)
-    : IGameState::Object{x, y}, health{health}, max_health{max_health} {}
+    : IGameState::IPlayer{x, y}, health{health}, max_health{max_health} {}
 
 IGameState::ObjectDescriptor Player::get_descriptor() const {
   return IGameState::ObjectDescriptor::PLAYER;
 }
 
-std::optional<std::tuple<int, int>> Player::get_health() const {
-  return {{health, max_health}};
-}
+std::tuple<int, int> Player::get_health() const { return {health, max_health}; }
 
 void Player::move(const IGameState::PlayerMoveEvent& event) {
   int xx = x;
@@ -28,6 +53,12 @@ void Player::move(const IGameState::PlayerMoveEvent& event) {
   }
 }
 
+int Player::get_lvl() const { return lvl.get_lvl(); }
+
+int Player::get_exp() const { return lvl.get_exp(); }
+
+int Player::get_lvl_exp() const { return lvl.get_lvl_exp(); }
+
 void Player::heal(int hp) { health = std::min(max_health, health + hp); }
 
 void Player::damage(int x) { health = std::max(health - x, 0); }
@@ -37,21 +68,29 @@ void Player::set_pos(int xx, int yy) {
   y = yy;
 }
 
+void Player::add_exp(int count) { lvl.add_exp(count); }
+
 /* Mob impl/ */
-Mob::Mob(int x, int y, int health, int max_health,
+Mob::Mob(int x, int y, int health, int max_health, int dmg, int exp,
          IGameState::ObjectDescriptor descriptor)
-    : IGameState::Object{x, y},
+    : IGameState::IHealthable{x, y},
       descriptor{descriptor},
       health{health},
-      max_health{max_health} {}
+      max_health{max_health},
+      dmg{dmg},
+      exp{exp} {}
 
 IGameState::ObjectDescriptor Mob::get_descriptor() const { return descriptor; }
+
+std::tuple<int, int> Mob::get_health() const { return {health, max_health}; }
 
 void Mob::damage(int x) {
   health = std::max(health - x, 0);
   if (health == 0) {
     auto map = state->get_current_map();
     map->remove_object(map->mobs, this);
+    /* Add exp. */
+    dynamic_cast<Player*>(state->get_player())->add_exp(exp);
   }
 }
 
@@ -82,7 +121,7 @@ std::optional<std::string_view> DungeonBlock::get_label() const {
 
 /* Enter impl. */
 Enter::Enter(int x, int y, std::string_view label, std::string transition)
-    : IGameState::EnterObj{x, y, std::move(transition)}, label(label) {}
+    : IGameState::IEnter{x, y, std::move(transition)}, label(label) {}
 
 IGameState::ObjectDescriptor Enter ::get_descriptor() const {
   return IGameState::ObjectDescriptor::ENTER;
@@ -125,11 +164,13 @@ void Exit::apply() const {
   }
 }
 
-/* Orc impl. */
-Orc::Orc(int x, int y) : Mob{x, y, 15, 15, IGameState::ObjectDescriptor::ORC} {}
-
 const int ORC_DAMAGE_RADIUS = 3;
 const int ORC_VIEW_FIELD = 6;
+const int ORC_DMG = 2;
+
+/* Orc impl. */
+Orc::Orc(int x, int y)
+    : Mob{x, y, 15, 15, ORC_DMG, 4, IGameState::ObjectDescriptor::ORC} {}
 
 void Orc::move() {
   auto [px, py] = state->get_player()->get_pos();
@@ -161,7 +202,7 @@ void Orc::move() {
        * catch up with the enemy further with
        * a probability of 33%.
        */
-      dynamic_cast<Player*>(state->get_player())->damage(2);
+      dynamic_cast<Player*>(state->get_player())->damage(dmg);
       return;
     }
     /* Choose random step that will bring us as
@@ -183,7 +224,11 @@ void Orc::move() {
   /* TODO: random walk. */
 }
 
-Bat::Bat(int x, int y) : Mob{x, y, 7, 7, IGameState::ObjectDescriptor::BAT} {}
+const int BAT_DMG = 0;
+const int BAT_EXP = 2;
+
+Bat::Bat(int x, int y)
+    : Mob{x, y, 7, 7, BAT_DMG, BAT_EXP, IGameState::ObjectDescriptor::BAT} {}
 
 void Bat::move() {
   /*
