@@ -19,6 +19,7 @@ Map::Map(const std::filesystem::path& p) {
   std::string s;
   int x = 0;
 
+  name = p.stem();
   while (std::getline(in, s)) {
     for (int y = 0; y < s.size(); ++y) {
       char c = s[y];

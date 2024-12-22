@@ -22,7 +22,7 @@ struct GameState : IGameState {
   friend class Border;
 
   GameState(std::unique_ptr<World> world);
-  const std::vector<Object*>& get_objects() const override;
+  const MapDescription get_map() const override;
 
   Object* get_player() const override;
 
