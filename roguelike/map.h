@@ -2,12 +2,12 @@
 #include <filesystem>
 #include <vector>
 
-#include "entities.h"
 #include "objects.h"
 #include "state.h"
 
 struct Map {
   friend class GameState;
+  friend class Player;
 
   /* Each map contains player. */
   Map(IGameState::Object* player);
@@ -21,6 +21,7 @@ struct Map {
   std::vector<std::unique_ptr<Chest>> chests;
   std::vector<std::unique_ptr<Wall>> walls;
   std::vector<std::unique_ptr<Border>> borders;
+  std::vector<std::unique_ptr<Mob>> mobs;
   std::unique_ptr<Exit> exit;
   std::string name;
 
@@ -38,8 +39,6 @@ struct Map {
   void push_exit(std::unique_ptr<Exit> exit_obj);
   std::tuple<int, int> start_pos() const;
 };
-
-struct Player;
 
 struct World {
   friend class GameState;

@@ -2,6 +2,8 @@
 
 #include <string_view>
 
+#include "map.h"
+
 /* Player impl. */
 Player::Player(int x, int y, int health, int max_health)
     : IGameState::Object{x, y}, health{health}, max_health{max_health} {}
@@ -15,7 +17,22 @@ std::optional<std::tuple<int, int>> Player::get_health() const {
 }
 
 void Player::move(const IGameState::PlayerMoveEvent& event) {
-  apply_move(x, y, event);
+  int xx = x;
+  int yy = y;
+  apply_move(xx, yy, event);
+
+  auto as_object = static_cast<IGameState::Object*>(this);
+  /* Check on intersection, for now only with static objects. */
+  auto map = state->get_current_map();
+  for (const auto obj : map->objects) {
+    if (obj != as_object) {
+      auto [xo, yo] = obj->get_pos();
+      if (xo == xx && yo == yy) {
+        return;
+      }
+    }
+  }
+  set_pos(xx, yy);
 }
 
 void Player::heal(int hp) { health = std::min(max_health, health + hp); }
@@ -103,3 +120,5 @@ void Exit::apply() const {
     state->move_back();
   }
 }
+
+/* Orc impl. */

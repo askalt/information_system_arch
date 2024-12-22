@@ -3,6 +3,7 @@
 #include "state.h"
 
 struct Player : public GameStateObject, IGameState::Object {
+  friend class GameState;
   Player(int x, int y, int health, int max_health);
 
   IGameState::ObjectDescriptor get_descriptor() const override;
@@ -21,9 +22,13 @@ struct Player : public GameStateObject, IGameState::Object {
 };
 
 struct Mob : public GameStateObject, IGameState::Object {
+  friend class GameState;
+
   Mob(int x, int y, int health, int max_health);
 
   void damage(int x);
+
+  virtual void move() = 0;
 
  private:
   int health;
@@ -102,4 +107,11 @@ struct Exit : public GameStateObject, IGameState::Object {
   IGameState::ObjectDescriptor get_descriptor() const override;
 
   void apply() const override;
+};
+
+// Stupid, just damages player.
+struct Orc : public Mob {
+  friend class GameState;
+
+  Orc(int x, int y);
 };
