@@ -32,13 +32,21 @@ struct DungeonBlock : IGameState::Object {
 };
 
 struct Enter : IGameState::Object {
-  Enter(int x, int y, std::string_view label) : Object{x, y}, label(label) {}
+  Enter(int x, int y, std::string_view label, std::string transition)
+      : Object{x, y}, label(label), transition(std::move(transition)) {}
   IGameState::ObjectDescriptor get_descriptor() const override {
     return IGameState::ObjectDescriptor::ENTER;
   }
+
+  void set_map(Map* to_map) { map = to_map; }
   std::optional<std::string_view> get_label() const override { return label; }
+  const std::string& get_transition() const { return transition; }
+  const Map* get_map() const { return map; }
+
+ private:
   std::string_view label;
-  // Each enter leads to the map.
+  std::string transition;
+  // Each enter leads to some map (edge).
   Map* map;
 };
 
@@ -49,4 +57,11 @@ struct Border : IGameState::Object {
     return descriptor;
   }
   IGameState::ObjectDescriptor descriptor;
+};
+
+struct Exit : IGameState::Object {
+  Exit(int x, int y) : Object{x, y} {}
+  IGameState::ObjectDescriptor get_descriptor() const override {
+    return IGameState::ObjectDescriptor::EXIT;
+  }
 };
