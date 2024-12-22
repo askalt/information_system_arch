@@ -1,24 +1,47 @@
 
-DEPS = app.h event.h entities.h game_ui.h main.cpp panic.h state.h system.h static_objs.h consts.h chars.h
-BIN := bin
+BIN ?= bin
+CPP := main.cpp map.cpp objects.cpp state.cpp entities.cpp
+LIBS ?= -lncurses
+
+# Default world path.
 WORLD_PATH = ./world
+
+CPPOBJ := $(addprefix $(BIN)/,$(CPP:.cpp=.o))
+DEPS   := $(CPPOBJ:.o=.d)
 
 all: build
 
-bin:
-	mkdir -p bin
+$(CPPOBJ): $(BIN)/%.o : %.cpp
+	@mkdir -p $(@D)
+	$(CXX) $(FLAGS) $(LIBS) -c $< -o $@
 
-build: $(DEPS) bin
-	$(CXX) main.cpp $(FLAGS) -lncurses -o ./$(BIN)/app
+$(DEPS): $(BIN)/%.d : %.cpp
+	@mkdir -p $(@D)
+	$(CXX) -E $(FLAGS) $(LIBS) $< -MM -MT $(@:.d=.o) > $@
 
-build_pdcurses: $(DEPS) bin
-	$(CXX) main.cpp -L$(PDCURSESPATH) $(FLAGS) -lSDL2 -l:pdcurses.so -o ./$(BIN)/app_pdcurses
+.PHONY: build
+build: $(CPPOBJ)
+	$(CXX) $^ $(LIBS) $(FLAGS) -o $(BIN)/app
 
 run: build
 	./$(BIN)/app $(WORLD_PATH)
 
-run_pdcurses: build_pdcurses
-	LD_LIBRARY_PATH=$(PDCURSESPATH):$(LD_LIBRARY_PATH) ./$(BIN)/app_pdcurses $(WORLD_PATH)
+# .PHONY: build_pdcurses
+# build_pdcurses:
+# 	LIBS = -lSDL2 -l:pdcurses.so
+# 	FLAGS += -L$(PDCURSESPATH)
+# 	make build
 
+# run_pdcurses:
+# 	LD_LIBRARY_PATH=$(PDCURSESPATH):$(LD_LIBRARY_PATH) ./$(BIN)/app ($WORLD_PATH)
+
+# targets which we have no need to recollect deps.
+NODEPS = clean
+
+.PHONY: clean
 clean:
 	rm -rf ./$(BIN)
+
+ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
+include $(DEPS)
+endif
