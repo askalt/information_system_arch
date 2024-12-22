@@ -124,3 +124,11 @@ struct Orc : public Mob {
 
   void move() override;
 };
+
+struct Bat : public Mob {
+  friend class GameState;
+
+  Bat(int x, int y);
+
+  void move() override;
+};
