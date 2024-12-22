@@ -18,7 +18,7 @@ GameState::GameState(std::unique_ptr<World> world) : world{std::move(world)} {
       MapStackNode{.x = -1, .y = -1, .map = this->world->start_map});
 }
 
-IGameState::Object* GameState::get_player() const {
+IGameState::IPlayer* GameState::get_player() const {
   return world->player.get();
 }
 
