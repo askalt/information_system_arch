@@ -1,7 +1,8 @@
 #include "game_ui.h"
 
 struct App {
-  App() : state{std::make_shared<GameState>()}, game_ui{state} {}
+  App(World world)
+      : state{std::make_shared<GameState>(std::move(world))}, game_ui{state} {}
 
   int run() {
     while (true) {

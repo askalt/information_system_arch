@@ -1,66 +1,23 @@
 #pragma once
 
 #include "cassert"
+#include "chars.h"
 #include "entities.h"
+#include "map.h"
 #include "static_objs.h"
-#include "zero_map.h"
-
-void apply_move(int& x, int& y, const IGameState::PlayerMoveEvent& event) {
-  switch (event) {
-    case IGameState::PlayerMoveEvent::Down: {
-      x += 1;
-      break;
-    }
-    case IGameState::PlayerMoveEvent::Up: {
-      x -= 1;
-      break;
-    }
-    case IGameState::PlayerMoveEvent::Left: {
-      y -= 1;
-      break;
-    }
-    case IGameState::PlayerMoveEvent::Right: {
-      y += 1;
-      break;
-    }
-  }
-}
-
-struct Player : IGameState::Object {
-  Player(int x, int y, int health, int max_health)
-      : Object{x, y}, health{health}, max_health{max_health} {}
-  IGameState::ObjectDescriptor get_descriptor() const override {
-    return IGameState::ObjectDescriptor::PLAYER;
-  }
-  std::optional<std::tuple<int, int>> get_health() const override {
-    return {{health, max_health}};
-  }
-  void move(const IGameState::PlayerMoveEvent& event) {
-    apply_move(x, y, event);
-  }
-  void set_pos(int xx, int yy) {
-    x = xx;
-    y = yy;
-  }
-
- private:
-  int health;
-  int max_health;
-};
 
 struct GameState : IGameState {
-  GameState() {
-    player = std::make_unique<Player>(9, 5, 20, 20);
-    maps.push_back(std::unique_ptr{make_zero_map(player.get())});
-    map_stack.push_back(maps.back().get());
+  GameState(World world) : world(std::move(world)) {
+    map_stack.push_back(
+        MapStackNode{.x = -1, .y = -1, .map = this->world.start_map});
   }
 
   const std::vector<Object*>& get_objects() const override {
     assert(!map_stack.empty());
-    return map_stack.back()->objects;
+    return map_stack.back().map->objects;
   }
 
-  Object* get_player() const override { return player.get(); }
+  Object* get_player() const override { return world.player.get(); }
 
   void apply(const Event& event) override {
     switch (event.type) {
@@ -77,45 +34,66 @@ struct GameState : IGameState {
 
  private:
   void apply_player_move(const PlayerMoveEvent& event) {
-    auto [x, y] = player->get_pos();
+    auto [x, y] = world.player->get_pos();
     apply_move(x, y, event);
-    auto current_map = map_stack.back();
+    auto current_map = map_stack.back().map;
     /* Check on intersection, for now only with static objects. */
     for (const auto obj : current_map->objects) {
-      if (obj != player.get()) {
+      if (obj != world.player.get()) {
         auto [xo, yo] = obj->get_pos();
         if (xo == x && yo == y) {
           return;
         }
       }
     }
-    player->move(event);
+    world.player->move(event);
   }
 
   void apply_enter(const EnterEvent&) {
-    auto [x, y] = player->get_pos();
+    auto [x, y] = world.player->get_pos();
     int dx[] = {1, -1, 0, 0};
     int dy[] = {0, 0, 1, -1};
-    Map* transition = nullptr;
-    auto current_map = map_stack.back();
+    const Map* transition = nullptr;
+    auto current_map = map_stack.back().map;
+    /* Check on enter. */
     for (const auto& enter : current_map->enters) {
       for (int i = 0; i < 4; ++i) {
         int xx = x + dx[i];
         int yy = y + dy[i];
         auto [xo, yo] = enter->get_pos();
         if (xo == xx && yo == yy) {
-          transition = enter->map;
+          transition = enter->get_map();
         }
       }
     }
     if (transition != nullptr) {
-      map_stack.push_back(transition);
+      map_stack.push_back(MapStackNode{.x = x, .y = y, .map = transition});
       auto [sx, sy] = transition->start_pos();
-      player->set_pos(sx, sy);
+      world.player->set_pos(sx, sy);
+    }
+    /* Check on exit. */
+    auto [xe, ye] = current_map->start_pos();
+    bool near_exit = false;
+    for (int i = 0; i < 4; ++i) {
+      int xx = x + dx[i];
+      int yy = y + dy[i];
+      if (xx == xe && yy == ye) {
+        near_exit = true;
+      }
+    }
+    if (near_exit && map_stack.size() > 1) {
+      world.player->set_pos(map_stack.back().x, map_stack.back().y);
+      map_stack.pop_back();
     }
   }
 
-  std::unique_ptr<Player> player;
-  std::vector<std::unique_ptr<Map>> maps;
-  std::vector<Map*> map_stack;
+  struct MapStackNode {
+    /* Position in the previous map. */
+    int x;
+    int y;
+    const Map* map;
+  };
+
+  World world;
+  std::vector<MapStackNode> map_stack;
 };

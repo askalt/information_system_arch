@@ -14,6 +14,7 @@ struct IGameState {
     HORIZONTAL_BORDER,
     VERTICAL_BORDER,
     CORNER,
+    EXIT,
   };
 
   struct Object {
