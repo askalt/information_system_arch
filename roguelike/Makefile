@@ -1,32 +1,24 @@
 
-DEPS = app.h event.h entities.h game_ui.h main.cpp panic.h state.h system.h static_objs.h consts.h
+DEPS = app.h event.h entities.h game_ui.h main.cpp panic.h state.h system.h static_objs.h consts.h chars.h
 BIN := bin
+WORLD_PATH = ./world
 
 all: build
 
 bin:
 	mkdir -p bin
 
-build_pdcurses: $(DEPS) bin generate_zero_map
-	$(CXX) main.cpp -L$(PDCURSESPATH) $(FLAGS) -lSDL2 -l:pdcurses.so -o ./$(BIN)/app_pdcurses
-
-run_pdcurses: build_pdcurses
-	LD_LIBRARY_PATH=$(PDCURSESPATH):$(LD_LIBRARY_PATH) ./$(BIN)/app_pdcurses
-
-generate_zero_map: build_map_codegen
-	make INPUT=zero_map.txt OUTPUT=zero_map.h gen_map
-
-build: $(DEPS) bin generate_zero_map
+build: $(DEPS) bin
 	$(CXX) main.cpp $(FLAGS) -lncurses -o ./$(BIN)/app
 
-build_map_codegen: bin map_codegen.cpp
-	$(CXX) map_codegen.cpp -o ./$(BIN)/map_codegen
+build_pdcurses: $(DEPS) bin
+	$(CXX) main.cpp -L$(PDCURSESPATH) $(FLAGS) -lSDL2 -l:pdcurses.so -o ./$(BIN)/app_pdcurses
 
 run: build
-	./$(BIN)/app
+	./$(BIN)/app $(WORLD_PATH)
 
-gen_map: build_map_codegen
-	./$(BIN)/map_codegen < $(INPUT) > $(OUTPUT)
+run_pdcurses: build_pdcurses
+	LD_LIBRARY_PATH=$(PDCURSESPATH):$(LD_LIBRARY_PATH) ./$(BIN)/app_pdcurses $(WORLD_PATH)
 
 clean:
 	rm -rf ./$(BIN)

@@ -50,10 +50,10 @@ const std::unordered_map<IGameState::ObjectDescriptor, char>
         {IGameState::ObjectDescriptor::WALL, '*'},
         {IGameState::ObjectDescriptor::CHEST, '@'},
         {IGameState::ObjectDescriptor::STONE, '#'},
-        {IGameState::ObjectDescriptor::ENTER, 'E'},
         {IGameState::ObjectDescriptor::HORIZONTAL_BORDER, '-'},
         {IGameState::ObjectDescriptor::VERTICAL_BORDER, '|'},
         {IGameState::ObjectDescriptor::CORNER, '+'},
+        {IGameState::ObjectDescriptor::EXIT, '%'},
 };
 
 int rem(int a, int mod) {
@@ -102,6 +102,10 @@ std::string make_object_info(IGameState::Object *object) {
     case IGameState::ObjectDescriptor::HORIZONTAL_BORDER:
     case IGameState::ObjectDescriptor::VERTICAL_BORDER: {
       ss << "nil";
+      break;
+    }
+    case IGameState::ObjectDescriptor::EXIT: {
+      ss << "exit";
       break;
     }
     default:
@@ -171,6 +175,8 @@ struct GameUI {
         case 'S':
           return {GameState::PlayerMoveEvent::Down};
         case KEY_ENTER:
+        case '\n':
+        case '\r\n':
           return {GameState::EnterEvent{}};
         default:
           return {GameState::NoOpEvent{}};
@@ -211,10 +217,20 @@ struct GameUI {
     printw("\n");
   }
 
+  char make_object_symbol(IGameState::Object *obj) {
+    auto desc = obj->get_descriptor();
+    if (desc == IGameState::ObjectDescriptor::ENTER) {
+      auto as_enter = dynamic_cast<Enter *>(obj);
+      assert(as_enter);
+      return as_enter->get_transition().at(0);
+    }
+    auto it = PART_DESCRIPTOR_CHAR.find(desc);
+    assert(it != PART_DESCRIPTOR_CHAR.end());
+    return it->second;
+  }
+
   // Draws a field.
   void draw_field(int start_x) {
-    // draw_border(start_x);
-
     auto player = state->get_player();
     auto [player_x, player_y] = player->get_pos();
     auto [lx, ux] = get_bounds(player_x, H_FIELD - 2);
@@ -230,29 +246,15 @@ struct GameUI {
         auto descriptor = object->get_descriptor();
         x = rem(x, H_FIELD - 2) + 1;
         y = rem(y, W_FIELD - 2) + 1;
-        auto chr = PART_DESCRIPTOR_CHAR.find(descriptor);
-        assert(chr != PART_DESCRIPTOR_CHAR.end());
-        mvaddch(start_x + x, y, chr->second);
+
+        auto symbol = make_object_symbol(object);
+        mvaddch(start_x + x, y, symbol);
         if (carrier_x == start_x + x && carrier_y == y) {
           /* Remember current object. */
           current_object = object;
         }
       }
     }
-  }
-
-  // Draws a border.
-  void draw_border(int start_x) {
-    mvaddch(0 + start_x, 0, '+');
-    for (size_t i = 0; i < W_FIELD - 2; ++i) addch('-');
-    addch('+');
-    for (size_t i = 1; i < H_FIELD - 1; ++i) {
-      mvaddch(i + start_x, 0, '|');
-      mvaddch(i + start_x, W_FIELD - 1, '|');
-    }
-    mvaddch(H_FIELD - 1 + start_x, 0, '+');
-    for (size_t i = 0; i < W_FIELD - 2; ++i) addch('-');
-    addch('+');
   }
 
   std::shared_ptr<const IGameState> state;
