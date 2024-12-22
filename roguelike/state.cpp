@@ -1,4 +1,5 @@
 
+
 #include <cassert>
 
 #include "entities.h"
@@ -34,20 +35,13 @@ void GameState::apply_event(const Event& event) {
   }
 }
 
+const Map* GameState::get_current_map() const { return map_stack.back().map; }
+
 void GameState::player_move(const PlayerMoveEvent& event) {
-  auto [x, y] = world->player->get_pos();
-  apply_move(x, y, event);
-  auto current_map = map_stack.back().map;
-  /* Check on intersection, for now only with static objects. */
-  for (const auto obj : current_map->objects) {
-    if (obj != world->player.get()) {
-      auto [xo, yo] = obj->get_pos();
-      if (xo == x && yo == y) {
-        return;
-      }
-    }
-  }
   world->player->move(event);
+  for (const auto& mob : get_current_map()->mobs) {
+    mob->move();
+  }
 }
 
 const IGameState::MapDescription GameState::get_map() const {
