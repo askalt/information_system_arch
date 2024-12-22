@@ -33,9 +33,6 @@ struct IGameState {
 
     virtual ObjectDescriptor get_descriptor() const = 0;
 
-    // Get current, max health.
-    virtual std::optional<std::tuple<int, int>> get_health() const;
-
     // Get optional label, e.g. wall may be labeled as "dungeon".
     virtual std::optional<std::string_view> get_label() const;
 
@@ -50,8 +47,29 @@ struct IGameState {
     const std ::vector<Object*>& objects;
   };
 
-  struct EnterObj : Object {
-    EnterObj(int x, int y, std::string transition);
+  struct IHealthable : Object {
+    IHealthable(int x, int y);
+
+    // Get current, max health.
+    virtual std::tuple<int, int> get_health() const = 0;
+  };
+
+  struct IPlayer : IHealthable {
+    IPlayer(int x, int y);
+
+    virtual int get_lvl() const = 0;
+
+    virtual int get_exp() const = 0;
+
+    virtual int get_lvl_exp() const = 0;
+  };
+
+  struct IMob : IHealthable {
+    IMob(int x, int y);
+  };
+
+  struct IEnter : Object {
+    IEnter(int x, int y, std::string transition);
 
     const std::string& get_transition();
 
@@ -85,7 +103,7 @@ struct IGameState {
     EventType type;
   };
 
-  virtual Object* get_player() const = 0;
+  virtual IPlayer* get_player() const = 0;
 
   virtual const MapDescription get_map() const = 0;
 

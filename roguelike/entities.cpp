@@ -16,10 +16,6 @@ bool IGameState::Object::on_same_pos(const IGameState::Object* other) const {
 
 IGameState::Object::Object(int x, int y) : x{x}, y{y} {}
 
-std::optional<std::tuple<int, int>> IGameState::Object::get_health() const {
-  return std::nullopt;
-}
-
 std::optional<std::string_view> IGameState::Object::get_label() const {
   return std::nullopt;
 }
@@ -34,11 +30,11 @@ IGameState::Event::Event(NoOpEvent event)
 IGameState::Event::Event(ApplyEvent event)
     : apply(std::move(event)), type(EventType::Apply) {}
 
-/* Enter impl. */
-IGameState::EnterObj::EnterObj(int x, int y, std::string transition)
+/* IEnter impl. */
+IGameState::IEnter::IEnter(int x, int y, std::string transition)
     : Object{x, y}, transition{std::move(transition)} {};
 
-const std::string& IGameState::EnterObj::get_transition() { return transition; }
+const std::string& IGameState::IEnter::get_transition() { return transition; }
 
 void apply_move(int& x, int& y, const IGameState::PlayerMoveEvent& event) {
   switch (event) {
@@ -60,3 +56,12 @@ void apply_move(int& x, int& y, const IGameState::PlayerMoveEvent& event) {
     }
   }
 }
+
+/* IHealtable impl. */
+IGameState::IHealthable::IHealthable(int x, int y) : Object{x, y} {}
+
+/* IPlayer impl. */
+IGameState::IPlayer::IPlayer(int x, int y) : IGameState::IHealthable{x, y} {}
+
+/* IMob impl. */
+IGameState::IMob::IMob(int x, int y) : IGameState::IHealthable{x, y} {}

@@ -127,9 +127,9 @@ std::string make_object_info(IGameState::Object *object) {
   auto [x, y] = object->get_pos();
   ss << std::to_string(x) << ", " << std::to_string(y) << ")";
 
-  auto health_opt = object->get_health();
-  if (health_opt.has_value()) {
-    auto [health, max_health] = health_opt.value();
+  if (auto healthable = dynamic_cast<IGameState::IHealthable *>(object);
+      healthable != nullptr) {
+    auto [health, max_health] = healthable->get_health();
     ss << ", health = " << std::to_string(health) << "/"
        << std::to_string(max_health);
   }
@@ -215,11 +215,13 @@ struct GameUI {
     auto [player_x, player_y] = player->get_pos();
     printw("Pos:    (%d, %d)\n", player_x, player_y);
     printw("Health: ");
-    auto [health, max_health] = player->get_health().value();
+    auto [health, max_health] = player->get_health();
     draw_healthbar(health, max_health);
+    printw("Level:  %d\n", player->get_lvl());
+    printw("Exp:    (%d/%d)\n", player->get_exp(), player->get_lvl_exp());
     printw("Items:  []\n");
     printw("Stash:  []\n");
-    return 4;
+    return 7;
   }
 
   void draw_current_object_info(int start_x) {
@@ -242,7 +244,7 @@ struct GameUI {
   char make_object_symbol(IGameState::Object *obj) {
     auto desc = obj->get_descriptor();
     if (desc == IGameState::ObjectDescriptor::ENTER) {
-      auto as_enter = dynamic_cast<IGameState::EnterObj *>(obj);
+      auto as_enter = dynamic_cast<IGameState::IEnter *>(obj);
       assert(as_enter);
       return as_enter->get_transition().at(0);
     }

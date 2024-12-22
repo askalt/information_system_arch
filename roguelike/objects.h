@@ -2,13 +2,29 @@
 #pragma once
 #include "state.h"
 
-struct Player : public GameStateObject, IGameState::Object {
+struct Level {
+  Level();
+  int get_exp() const;
+  int get_lvl() const;
+
+  /* Limit expr for current level. */
+  int get_lvl_exp() const;
+
+  void add_exp(int count);
+
+ private:
+  int lvl;
+  int exp;
+  int lvl_exp;
+};
+
+struct Player : public GameStateObject, IGameState::IPlayer {
   friend class GameState;
   Player(int x, int y, int health, int max_health);
 
   IGameState::ObjectDescriptor get_descriptor() const override;
 
-  std::optional<std::tuple<int, int>> get_health() const override;
+  std::tuple<int, int> get_health() const override;
 
   void move(const IGameState::PlayerMoveEvent& event);
 
@@ -18,27 +34,40 @@ struct Player : public GameStateObject, IGameState::Object {
 
   void damage(int hp);
 
+  void add_exp(int count);
+
+  int get_lvl() const override;
+
+  int get_exp() const override;
+
+  int get_lvl_exp() const override;
+
  private:
   int health;
   int max_health;
+  Level lvl{};
 };
 
-struct Mob : public GameStateObject, IGameState::Object {
+struct Mob : public GameStateObject, IGameState::IHealthable {
   friend class GameState;
 
-  Mob(int x, int y, int health, int max_health,
+  Mob(int x, int y, int health, int max_health, int dmg, int exp,
       IGameState::ObjectDescriptor descriptor);
 
   void damage(int x);
 
   virtual void move() = 0;
 
+  std::tuple<int, int> get_health() const override;
+
   IGameState::ObjectDescriptor get_descriptor() const override;
 
- private:
+ protected:
   IGameState::ObjectDescriptor descriptor;
   int health;
   int max_health;
+  int dmg;
+  int exp;
 };
 
 struct Wall : public GameStateObject, IGameState::Object {
@@ -72,7 +101,7 @@ struct DungeonBlock : public GameStateObject, IGameState::Object {
   friend class GameState;
 };
 
-struct Enter : public GameStateObject, IGameState::EnterObj {
+struct Enter : public GameStateObject, IGameState::IEnter {
   friend class GameState;
 
   Enter(int x, int y, std::string_view label, std::string transition);
