@@ -16,6 +16,8 @@ struct Player : public GameStateObject, IGameState::Object {
 
   void set_pos(int xx, int yy);
 
+  void damage(int hp);
+
  private:
   int health;
   int max_health;
@@ -24,13 +26,17 @@ struct Player : public GameStateObject, IGameState::Object {
 struct Mob : public GameStateObject, IGameState::Object {
   friend class GameState;
 
-  Mob(int x, int y, int health, int max_health);
+  Mob(int x, int y, int health, int max_health,
+      IGameState::ObjectDescriptor descriptor);
 
   void damage(int x);
 
   virtual void move() = 0;
 
+  IGameState::ObjectDescriptor get_descriptor() const override;
+
  private:
+  IGameState::ObjectDescriptor descriptor;
   int health;
   int max_health;
 };
@@ -110,8 +116,11 @@ struct Exit : public GameStateObject, IGameState::Object {
 };
 
 // Stupid, just damages player.
+// Runs to player when see him.
 struct Orc : public Mob {
   friend class GameState;
 
   Orc(int x, int y);
+
+  void move() override;
 };

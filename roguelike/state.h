@@ -12,6 +12,7 @@ struct Enter;
 struct Exit;
 struct Border;
 struct Chest;
+struct Orc;
 
 struct GameState : IGameState {
   friend class Player;
@@ -21,6 +22,7 @@ struct GameState : IGameState {
   friend class Enter;
   friend class Exit;
   friend class Border;
+  friend class Orc;
 
   GameState(std::unique_ptr<World> world);
   const MapDescription get_map() const override;
@@ -30,7 +32,7 @@ struct GameState : IGameState {
   void apply_event(const Event& event) override;
 
  private:
-  const Map* get_current_map() const;
+  Map* get_current_map() const;
 
   void player_move(const PlayerMoveEvent& event);
 
@@ -44,7 +46,7 @@ struct GameState : IGameState {
     /* Position in the previous map. */
     int x;
     int y;
-    const Map* map;
+    Map* map;
   };
 
   std::unique_ptr<World> world;
