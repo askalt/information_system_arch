@@ -39,7 +39,7 @@ struct IGameState {
     // Get optional label, e.g. wall may be labeled as "dungeon".
     virtual std::optional<std::string_view> get_label() const;
 
-    virtual ~Object() {}
+    virtual ~Object() = default;
 
    protected:
     int x, y;
@@ -91,7 +91,7 @@ struct IGameState {
 
   virtual void apply_event(const Event& event) = 0;
 
-  virtual ~IGameState();
+  virtual ~IGameState() = default;
 };
 
 void apply_move(int& x, int& y, const IGameState::PlayerMoveEvent& event);
