@@ -22,6 +22,7 @@ struct Map {
   std::vector<std::unique_ptr<Wall>> walls;
   std::vector<std::unique_ptr<Border>> borders;
   std::unique_ptr<Exit> exit;
+  std::string name;
 
   /* All objects that map contains. */
   std::vector<IGameState::Object*> objects;

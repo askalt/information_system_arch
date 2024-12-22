@@ -50,8 +50,12 @@ void GameState::player_move(const PlayerMoveEvent& event) {
   world->player->move(event);
 }
 
-const std::vector<IGameState::Object*>& GameState::get_objects() const {
-  return map_stack.back().map->objects;
+const IGameState::MapDescription GameState::get_map() const {
+  auto map = map_stack.back().map;
+  return IGameState::MapDescription{
+      .name = map->name,
+      .objects = map->objects,
+  };
 }
 
 void GameState::move_on(Map* map) {
