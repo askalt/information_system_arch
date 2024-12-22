@@ -43,6 +43,11 @@ struct IGameState {
     int x, y;
   };
 
+  struct MapDescription {
+    const std::string_view name;
+    const std ::vector<Object*>& objects;
+  };
+
   struct EnterObj : Object {
     EnterObj(int x, int y, std::string transition);
 
@@ -80,7 +85,7 @@ struct IGameState {
 
   virtual Object* get_player() const = 0;
 
-  virtual const std::vector<Object*>& get_objects() const = 0;
+  virtual const MapDescription get_map() const = 0;
 
   virtual void apply_event(const Event& event) = 0;
 

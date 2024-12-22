@@ -150,16 +150,24 @@ struct GameUI {
       switch (c) {
         /* Internal UI events. */
         case KEY_LEFT:
+          carried_pinned = false;
           carrier_y = std::max(0, carrier_y - 1);
           break;
         case KEY_RIGHT:
+          carried_pinned = false;
           carrier_y = std::min(W - 1, carrier_y + 1);
           break;
         case KEY_UP:
+          carried_pinned = false;
           carrier_x = std::max(0, carrier_x - 1);
           break;
         case KEY_DOWN:
+          carried_pinned = false;
           carrier_x = std::min(H - 1, carrier_x + 1);
+          break;
+        case 'p':
+        case 'P':
+          carried_pinned = true;
           break;
 
         /* External events. */
@@ -238,10 +246,18 @@ struct GameUI {
     auto [lx, ux] = get_bounds(player_x, H_FIELD - 2);
     auto [ly, uy] = get_bounds(player_y, W_FIELD - 2);
 
-    const auto objects = state->get_objects();
+    bool set_carrier_to_player = false;
+    const auto map = state->get_map();
+    if (map.name != previous_location) {
+      /* Location changes. So pin carrier and move to it to player. */
+      carried_pinned = true;
+      set_carrier_to_player = true;
+    }
+    previous_location = map.name;
 
+    auto previous_object = current_object;
     current_object = nullptr;
-    for (const auto &object : objects) {
+    for (const auto &object : map.objects) {
       auto [x, y] = object->get_pos();
       /* Check that object is contained in a visual field. */
       if (lx <= x && x < ux && ly <= y && y < uy) {
@@ -255,6 +271,15 @@ struct GameUI {
         }
         mvaddch(start_x + x, y, symbol);
         attroff(COLOR_PAIR(2));
+        if (descriptor == IGameState::ObjectDescriptor::PLAYER &&
+            set_carrier_to_player) {
+          carrier_x = start_x + x;
+          carrier_y = y;
+        }
+        if (carried_pinned && object == previous_object) {
+          carrier_x = start_x + x;
+          carrier_y = y;
+        }
         if (carrier_x == start_x + x && carrier_y == y) {
           /* Remember current object. */
           current_object = object;
@@ -266,13 +291,16 @@ struct GameUI {
   void draw_info(int start_x) {
     move(start_x, 0);
     printw("Help:\n");
-    printw("- Carrier: ARROWS\n");
-    printw("- Hero:    WASD\n");
-    printw("- Apply:   ENTER\n");
+    printw("- Carrier:       ARROWS\n");
+    printw("- Pin carrier:   P\n");
+    printw("- Hero:          WASD\n");
+    printw("- Apply:         ENTER\n");
   }
 
   std::shared_ptr<const IGameState> state;
   int carrier_x{};
   int carrier_y{};
+  bool carried_pinned{};
+  std::string_view previous_location;
   IGameState::Object *current_object = nullptr;
 };
