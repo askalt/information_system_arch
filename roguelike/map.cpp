@@ -1,4 +1,5 @@
 
+
 #include "map.h"
 
 #include <filesystem>
@@ -7,6 +8,7 @@
 
 #include "consts.h"
 #include "entities.h"
+#include "objects.h"
 #include "panic.h"
 
 /* Map impl. */

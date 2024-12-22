@@ -11,6 +11,7 @@ struct Mob;
 struct Enter;
 struct Exit;
 struct Border;
+struct Chest;
 
 struct GameState : IGameState {
   friend class Player;
@@ -29,6 +30,8 @@ struct GameState : IGameState {
   void apply_event(const Event& event) override;
 
  private:
+  const Map* get_current_map() const;
+
   void player_move(const PlayerMoveEvent& event);
 
   void move_on(Map* map);
