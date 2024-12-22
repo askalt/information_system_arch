@@ -182,3 +182,49 @@ void Orc::move() {
 
   /* TODO: random walk. */
 }
+
+Bat::Bat(int x, int y) : Mob{x, y, 7, 7, IGameState::ObjectDescriptor::BAT} {}
+
+void Bat::move() {
+  /*
+   * Bat can sleep with 25% probability.
+   */
+  if (rand() % 4 == 0) {
+    return;
+  }
+  auto [px, py] = state->get_player()->get_pos();
+  auto map = state->get_current_map();
+  int dist = abs(x - px) + abs(y - py);
+  if (dist > 7) {
+    /* Sleep. */
+    return;
+  }
+  /* View field, try to be closer. */
+  const int dx[] = {0, 1, -1, 0, 0};
+  const int dy[] = {0, 0, 0, 1, -1};
+  std::pair<int, int> vars[5]{};
+  int j = 0;
+  for (int i = 0; i < sizeof(dx) / sizeof(int); ++i) {
+    int xx = x + dx[i];
+    int yy = y + dy[i];
+    if (!map->has_object(xx, yy, static_cast<IGameState::Object*>(this))) {
+      vars[j].second = i;
+      vars[j].first = -(abs(xx - px) + abs(yy - py));
+      j++;
+    }
+    if (j == 0) {
+      return;
+    }
+  }
+  sort(vars, vars + j);
+  int cntv = 0;
+  while (cntv < sizeof(vars) / sizeof(vars[0]) &&
+         vars[cntv].first == vars[0].first) {
+    cntv++;
+  }
+  int choose = rand() % cntv;
+  int new_x = x + dx[vars[choose].second];
+  int new_y = y + dy[vars[choose].second];
+  x = new_x;
+  y = new_y;
+}

@@ -41,6 +41,7 @@ void init_UI(int argc, char *argv[]) {
   init_pair(1, COLOR_GREEN, COLOR_BLACK);
   init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
   init_pair(3, COLOR_RED, COLOR_BLACK);
+  init_pair(4, COLOR_YELLOW, COLOR_BLACK);
   noecho();
   resize_term(H, W);
 }
@@ -56,6 +57,7 @@ const std::unordered_map<IGameState::ObjectDescriptor, char>
         {IGameState::ObjectDescriptor::CORNER, '+'},
         {IGameState::ObjectDescriptor::EXIT, '%'},
         {IGameState::ObjectDescriptor::ORC, 'O'},
+        {IGameState::ObjectDescriptor::BAT, 'B'},
 };
 
 int rem(int a, int mod) {
@@ -112,6 +114,10 @@ std::string make_object_info(IGameState::Object *object) {
     }
     case IGameState::ObjectDescriptor::ORC: {
       ss << "orc";
+      break;
+    }
+    case IGameState::ObjectDescriptor::BAT: {
+      ss << "bat";
       break;
     }
     default:
@@ -273,10 +279,21 @@ struct GameUI {
 
         auto symbol = make_object_symbol(object);
         int attr = 0;
-        if (descriptor == IGameState::ObjectDescriptor::ENTER) {
-          attr = COLOR_PAIR(2);
-        } else if (descriptor == IGameState::ObjectDescriptor::ORC) {
-          attr = COLOR_PAIR(3);
+        switch (descriptor) {
+          case IGameState::ObjectDescriptor::ENTER: {
+            attr = COLOR_PAIR(2);
+            break;
+          }
+          case IGameState::ObjectDescriptor::ORC: {
+            attr = COLOR_PAIR(3);
+            break;
+          }
+          case IGameState::ObjectDescriptor::BAT: {
+            attr = COLOR_PAIR(4);
+          }
+          default: {
+            break;
+          }
         }
 
         attron(attr);

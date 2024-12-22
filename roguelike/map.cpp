@@ -72,6 +72,11 @@ Map::Map(const std::filesystem::path& p) {
                                       std::move(std::make_unique<Orc>(x, y)))));
             break;
           }
+          case '&': {
+            push_new_object(mobs, std::move(std::unique_ptr<Mob>(
+                                      std::move(std::make_unique<Bat>(x, y)))));
+            break;
+          }
           default: {
             panic("unexpected symbol");
           }

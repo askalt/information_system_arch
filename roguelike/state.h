@@ -13,6 +13,7 @@ struct Exit;
 struct Border;
 struct Chest;
 struct Orc;
+struct Bat;
 
 struct GameState : IGameState {
   friend class Player;
@@ -23,6 +24,7 @@ struct GameState : IGameState {
   friend class Exit;
   friend class Border;
   friend class Orc;
+  friend class Bat;
 
   GameState(std::unique_ptr<World> world);
   const MapDescription get_map() const override;
