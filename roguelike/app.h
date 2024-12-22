@@ -1,7 +1,9 @@
+#pragma once
 #include "game_ui.h"
+#include "map.h"
 
 struct App {
-  App(World world)
+  App(std::unique_ptr<World> world)
       : state{std::make_shared<GameState>(std::move(world))}, game_ui{state} {}
 
   int run() {
@@ -14,7 +16,7 @@ struct App {
           break;
         }
         case EventType::Game: {
-          state->apply(event.game_event);
+          state->apply_event(event.game_event);
           break;
         }
         default:

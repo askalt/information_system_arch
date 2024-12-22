@@ -10,7 +10,6 @@
 #include "curses.h"
 #include "event.h"
 #include "panic.h"
-#include "state.h"
 
 #define safe_call(f) \
   if (f() == ERR) {  \
@@ -19,7 +18,7 @@
 
 /* Console sizes. */
 const int W = 200;
-const int H = 100;
+const int H = 200;
 
 /* Game field sizes. */
 const int W_FIELD = 70;
@@ -40,6 +39,7 @@ void init_UI(int argc, char *argv[]) {
   keypad(stdscr, true);
   start_color();
   init_pair(1, COLOR_GREEN, COLOR_BLACK);
+  init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
   noecho();
   resize_term(H, W);
 }
@@ -137,6 +137,7 @@ struct GameUI {
     /* Leave place for current object description. */
     int field_start_x = header_end_x + 3;
     draw_field(field_start_x);
+    draw_info(field_start_x + H_FIELD + 1);
     draw_current_object_info(header_end_x);
     move(carrier_x, carrier_y);
     refresh();
@@ -176,8 +177,9 @@ struct GameUI {
           return {GameState::PlayerMoveEvent::Down};
         case KEY_ENTER:
         case '\n':
-        case '\r\n':
-          return {GameState::EnterEvent{}};
+          return {GameState::ApplyEvent{
+              .object = current_object,
+          }};
         default:
           return {GameState::NoOpEvent{}};
       }
@@ -220,7 +222,7 @@ struct GameUI {
   char make_object_symbol(IGameState::Object *obj) {
     auto desc = obj->get_descriptor();
     if (desc == IGameState::ObjectDescriptor::ENTER) {
-      auto as_enter = dynamic_cast<Enter *>(obj);
+      auto as_enter = dynamic_cast<IGameState::EnterObj *>(obj);
       assert(as_enter);
       return as_enter->get_transition().at(0);
     }
@@ -248,13 +250,25 @@ struct GameUI {
         y = rem(y, W_FIELD - 2) + 1;
 
         auto symbol = make_object_symbol(object);
+        if (descriptor == IGameState::ObjectDescriptor::ENTER) {
+          attron(COLOR_PAIR(2));
+        }
         mvaddch(start_x + x, y, symbol);
+        attroff(COLOR_PAIR(2));
         if (carrier_x == start_x + x && carrier_y == y) {
           /* Remember current object. */
           current_object = object;
         }
       }
     }
+  }
+
+  void draw_info(int start_x) {
+    move(start_x, 0);
+    printw("Help:\n");
+    printw("- Carrier: ARROWS\n");
+    printw("- Hero:    WASD\n");
+    printw("- Apply:   ENTER\n");
   }
 
   std::shared_ptr<const IGameState> state;
