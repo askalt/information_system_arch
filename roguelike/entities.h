@@ -1,6 +1,9 @@
 #pragma once
+
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <vector>
 
 // Abstract class of game state.
@@ -15,67 +18,62 @@ struct IGameState {
     VERTICAL_BORDER,
     CORNER,
     EXIT,
+    STICK,
+    SALVE,
   };
 
   struct Object {
-    Object(int x, int y) : x{x}, y{y} {}
+    Object(int x, int y);
 
-    bool on_same_pos(const Object* other) {
-      auto [xo, yo] = other->get_pos();
-      return x == xo && y == yo;
-    }
+    bool on_same_pos(const Object* other) const;
 
-    virtual std::tuple<int, int> get_pos() const { return {x, y}; }
+    virtual std::tuple<int, int> get_pos() const;
 
     virtual ObjectDescriptor get_descriptor() const = 0;
 
     // Get current, max health.
-    virtual std::optional<std::tuple<int, int>> get_health() const {
-      return std::nullopt;
-    }
+    virtual std::optional<std::tuple<int, int>> get_health() const;
 
     // Get optional label, e.g. wall may be labeled as "dungeon".
-    virtual std::optional<std::string_view> get_label() const {
-      return std::nullopt;
-    }
+    virtual std::optional<std::string_view> get_label() const;
+
     virtual ~Object() {}
 
    protected:
     int x, y;
   };
 
+  struct EnterObj : Object {
+    EnterObj(int x, int y, std::string transition);
+
+    const std::string& get_transition();
+
+   protected:
+    std::string transition;
+  };
+
   enum class PlayerMoveEvent { Left, Right, Up, Down };
-  struct ApplyActiveItemEvent {};
-  struct MoveItemToActiveEvent {};
   struct NoOpEvent {};
-  struct EnterEvent {};
+  struct ApplyEvent {
+    // Object to apply.
+    Object* object;
+  };
 
   enum class EventType {
     PlayerMove,
-    ApplyActiveItem,
-    MoveItemToActive,
     NoOp,
-    Enter,
+    Apply,
   };
 
   struct Event {
-    Event(PlayerMoveEvent event)
-        : player_move(std::move(event)), type(EventType::PlayerMove) {}
-    Event(ApplyActiveItemEvent event)
-        : select_inventory_item(std::move(event)),
-          type(EventType::ApplyActiveItem) {}
-    Event(MoveItemToActiveEvent event)
-        : move_item_to_active(std::move(event)),
-          type(EventType::MoveItemToActive) {}
-    Event(NoOpEvent event) : no_op(std::move(event)), type(EventType::NoOp) {}
-    Event(EnterEvent event) : enter(std::move(event)), type(EventType::Enter) {}
+    Event(PlayerMoveEvent event);
+    Event(NoOpEvent event);
+    Event(ApplyEvent event);
 
     union {
       PlayerMoveEvent player_move;
-      ApplyActiveItemEvent select_inventory_item;
-      MoveItemToActiveEvent move_item_to_active;
       NoOpEvent no_op;
-      EnterEvent enter;
+      ApplyEvent apply;
     };
     EventType type;
   };
@@ -84,7 +82,9 @@ struct IGameState {
 
   virtual const std::vector<Object*>& get_objects() const = 0;
 
-  virtual void apply(const Event& event) = 0;
+  virtual void apply_event(const Event& event) = 0;
 
-  virtual ~IGameState() {}
+  virtual ~IGameState();
 };
+
+void apply_move(int& x, int& y, const IGameState::PlayerMoveEvent& event);
