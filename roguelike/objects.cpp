@@ -1,5 +1,6 @@
 #include "objects.h"
 
+#include <algorithm>
 #include <string_view>
 
 #include "map.h"
@@ -20,22 +21,16 @@ void Player::move(const IGameState::PlayerMoveEvent& event) {
   int xx = x;
   int yy = y;
   apply_move(xx, yy, event);
-
-  auto as_object = static_cast<IGameState::Object*>(this);
-  /* Check on intersection, for now only with static objects. */
   auto map = state->get_current_map();
-  for (const auto obj : map->objects) {
-    if (obj != as_object) {
-      auto [xo, yo] = obj->get_pos();
-      if (xo == xx && yo == yy) {
-        return;
-      }
-    }
+  /* Check on intersection. */
+  if (!map->has_object(xx, yy, static_cast<IGameState::Object*>(this))) {
+    set_pos(xx, yy);
   }
-  set_pos(xx, yy);
 }
 
 void Player::heal(int hp) { health = std::min(max_health, health + hp); }
+
+void Player::damage(int x) { health = std::max(health - x, 0); }
 
 void Player::set_pos(int xx, int yy) {
   x = xx;
@@ -43,12 +38,21 @@ void Player::set_pos(int xx, int yy) {
 }
 
 /* Mob impl/ */
-Mob::Mob(int x, int y, int health, int max_health)
-    : IGameState::Object{x, y}, health{health}, max_health{max_health} {}
+Mob::Mob(int x, int y, int health, int max_health,
+         IGameState::ObjectDescriptor descriptor)
+    : IGameState::Object{x, y},
+      descriptor{descriptor},
+      health{health},
+      max_health{max_health} {}
+
+IGameState::ObjectDescriptor Mob::get_descriptor() const { return descriptor; }
 
 void Mob::damage(int x) {
-  health -= x;
-  health = std::max(health, 0);
+  health = std::max(health - x, 0);
+  if (health == 0) {
+    auto map = state->get_current_map();
+    map->remove_object(map->mobs, this);
+  }
 }
 
 /* Wall impl. */
@@ -122,3 +126,59 @@ void Exit::apply() const {
 }
 
 /* Orc impl. */
+Orc::Orc(int x, int y) : Mob{x, y, 15, 15, IGameState::ObjectDescriptor::ORC} {}
+
+const int ORC_DAMAGE_RADIUS = 3;
+const int ORC_VIEW_FIELD = 6;
+
+void Orc::move() {
+  auto [px, py] = state->get_player()->get_pos();
+  auto map = state->get_current_map();
+  int dist = abs(x - px) + abs(y - py);
+  if (dist < ORC_DAMAGE_RADIUS) {
+    dynamic_cast<Player*>(state->get_player())->damage(2);
+  } else if (dist <= ORC_VIEW_FIELD) {
+    /* View field, try to be closer. */
+    const int dx[] = {0, 1, -1, 0, 0};
+    const int dy[] = {0, 0, 0, 1, -1};
+    std::pair<int, int> vars[5]{};
+    int j = 0;
+    for (int i = 0; i < sizeof(dx) / sizeof(int); ++i) {
+      int xx = x + dx[i];
+      int yy = y + dy[i];
+      if (!map->has_object(xx, yy, static_cast<IGameState::Object*>(this))) {
+        vars[j].second = i;
+        vars[j].first = abs(xx - px) + abs(yy - py);
+        j++;
+      }
+    }
+    if (j == 0) {
+      return;
+    }
+    if (dist <= ORC_DAMAGE_RADIUS && rand() % 3 == 0) {
+      /*
+       * The orc can strike despite the fact that it will not
+       * catch up with the enemy further with
+       * a probability of 33%.
+       */
+      dynamic_cast<Player*>(state->get_player())->damage(2);
+      return;
+    }
+    /* Choose random step that will bring us as
+     * close to the player as possible.
+     */
+    sort(vars, vars + j);
+    int cntv = 0;
+    while (cntv < sizeof(vars) / sizeof(vars[0]) &&
+           vars[cntv].first == vars[0].first) {
+      cntv++;
+    }
+    int choose = rand() % cntv;
+    int new_x = x + dx[vars[choose].second];
+    int new_y = y + dy[vars[choose].second];
+    x = new_x;
+    y = new_y;
+  }
+
+  /* TODO: random walk. */
+}

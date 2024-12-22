@@ -20,6 +20,7 @@ struct IGameState {
     EXIT,
     STICK,
     SALVE,
+    ORC,
   };
 
   struct Object {

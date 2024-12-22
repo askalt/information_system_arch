@@ -35,7 +35,7 @@ void GameState::apply_event(const Event& event) {
   }
 }
 
-const Map* GameState::get_current_map() const { return map_stack.back().map; }
+Map* GameState::get_current_map() const { return map_stack.back().map; }
 
 void GameState::player_move(const PlayerMoveEvent& event) {
   world->player->move(event);

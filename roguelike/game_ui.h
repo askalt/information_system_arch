@@ -40,6 +40,7 @@ void init_UI(int argc, char *argv[]) {
   start_color();
   init_pair(1, COLOR_GREEN, COLOR_BLACK);
   init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
+  init_pair(3, COLOR_RED, COLOR_BLACK);
   noecho();
   resize_term(H, W);
 }
@@ -54,6 +55,7 @@ const std::unordered_map<IGameState::ObjectDescriptor, char>
         {IGameState::ObjectDescriptor::VERTICAL_BORDER, '|'},
         {IGameState::ObjectDescriptor::CORNER, '+'},
         {IGameState::ObjectDescriptor::EXIT, '%'},
+        {IGameState::ObjectDescriptor::ORC, 'O'},
 };
 
 int rem(int a, int mod) {
@@ -106,6 +108,10 @@ std::string make_object_info(IGameState::Object *object) {
     }
     case IGameState::ObjectDescriptor::EXIT: {
       ss << "exit";
+      break;
+    }
+    case IGameState::ObjectDescriptor::ORC: {
+      ss << "orc";
       break;
     }
     default:
@@ -266,11 +272,17 @@ struct GameUI {
         y = rem(y, W_FIELD - 2) + 1;
 
         auto symbol = make_object_symbol(object);
+        int attr = 0;
         if (descriptor == IGameState::ObjectDescriptor::ENTER) {
-          attron(COLOR_PAIR(2));
+          attr = COLOR_PAIR(2);
+        } else if (descriptor == IGameState::ObjectDescriptor::ORC) {
+          attr = COLOR_PAIR(3);
         }
+
+        attron(attr);
         mvaddch(start_x + x, y, symbol);
-        attroff(COLOR_PAIR(2));
+        attroff(attr);
+
         if (descriptor == IGameState::ObjectDescriptor::PLAYER &&
             set_carrier_to_player) {
           carrier_x = start_x + x;

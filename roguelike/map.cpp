@@ -67,6 +67,11 @@ Map::Map(const std::filesystem::path& p) {
           case ' ': {
             break;
           }
+          case '$': {
+            push_new_object(mobs, std::move(std::unique_ptr<Mob>(
+                                      std::move(std::make_unique<Orc>(x, y)))));
+            break;
+          }
           default: {
             panic("unexpected symbol");
           }
@@ -82,6 +87,18 @@ void Map::push_player(IGameState::Object* player) { objects.push_back(player); }
 void Map::push_exit(std::unique_ptr<Exit> exit_obj) {
   objects.push_back(exit_obj.get());
   exit = std::move(exit_obj);
+}
+
+bool Map::has_object(int x, int y, const IGameState::Object* exclude) const {
+  for (auto obj : objects) {
+    if (obj != exclude) {
+      auto [xo, yo] = obj->get_pos();
+      if (xo == x && yo == y) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
 
 std::tuple<int, int> Map::start_pos() const { return exit->get_pos(); }
