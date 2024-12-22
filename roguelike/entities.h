@@ -21,6 +21,7 @@ struct IGameState {
     STICK,
     SALVE,
     ORC,
+    BAT,
   };
 
   struct Object {
