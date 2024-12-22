@@ -13,10 +13,15 @@ struct Map {
   /* All objects that map contains. */
   std::vector<IGameState::Object*> objects;
 
+  int start_x;
+  int start_y;
+
   template <typename T>
   void push_new_object(std::vector<std::unique_ptr<T>>& container,
                        std::unique_ptr<T> object) {
     objects.push_back(object.get());
     container.push_back(std::move(object));
   }
+
+  std::tuple<int, int> start_pos() { return {start_x, start_y}; }
 };
