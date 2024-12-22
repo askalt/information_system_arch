@@ -25,8 +25,6 @@ std::optional<std::string_view> IGameState::Object::get_label() const {
   return std::nullopt;
 }
 
-IGameState::~IGameState() {}
-
 /* Event impl. */
 IGameState::Event::Event(IGameState::PlayerMoveEvent event)
     : player_move(std::move(event)), type(EventType::PlayerMove) {}
