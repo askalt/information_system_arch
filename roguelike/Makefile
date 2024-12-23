@@ -1,7 +1,16 @@
 
-BIN ?= bin
-CPP := main.cpp map.cpp objects.cpp state.cpp entities.cpp
-LIBS ?= -lncurses
+BIN      ?= bin
+TEST_BIN ?= test_bin
+TEST     ?= test
+LIBS     ?= -lncurses
+
+CPP           := main.cpp map.cpp objects.cpp state.cpp entities.cpp
+TEST_CPP      := $(wildcard $(TEST)/*.cpp)
+
+TEST_STEMS    := $(TEST_CPP:.cpp=)
+TEST_BINARIES := $(TEST_STEMS:$(TEST)/%=$(TEST_BIN)/%)
+TEST_OBJS     := $(TEST_BINARIES:%=%.o)
+TEST_DEPS     := $(TEST_OBJS:.o=.d)
 
 # Default world path.
 WORLD_PATH = ./world
@@ -35,13 +44,35 @@ run: build
 # run_pdcurses:
 # 	LD_LIBRARY_PATH=$(PDCURSESPATH):$(LD_LIBRARY_PATH) ./$(BIN)/app ($WORLD_PATH)
 
+$(TEST_BINARIES) : $(TEST_BIN)/% : $(TEST)/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) -I. $(FLAGS) $(LIBS) $< -o $@
+
+$(TEST_DEPS) : $(TEST_BIN)/%.d : $(TEST)/%.cpp
+	@mkdir -p $(@D)
+	$(CXX) -I. -E $(FLAGS) $(LIBS) $< -MM -MT $(@:.d=) > $@
+
+.PHONY: $(TEST_BINARIES)/run
+$(TEST_BINARIES)/run: %/run : %
+	@echo "Running test: ${@:$(TEST_BIN)/%/run=%}"
+	@if ./${@:/run=}; then echo ""; else echo "FAIL"; exit 1; fi
+
 # targets which we have no need to recollect deps.
 NODEPS = clean
 
+.PHONY: test
+test: $(TEST_BINARIES)/run
+
 .PHONY: clean
 clean:
-	rm -rf ./$(BIN)
+	rm -rf ./$(BIN) ./$(TEST_BIN)
 
 ifeq (0, $(words $(findstring $(MAKECMDGOALS), $(NODEPS))))
+
+ifneq (0, $(words $(findstring $(MAKECMDGOALS), test)))
+include $(TEST_DEPS)
+endif
+
 include $(DEPS)
+
 endif

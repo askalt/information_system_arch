@@ -1,5 +1,5 @@
 
-PROJS := cli
+PROJS := cli roguelike
 
 .PHONY: $(PROJS)-test
 $(PROJS)-test:
