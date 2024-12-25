@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <optional>
+#include <set>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -56,6 +57,8 @@ struct IGameState {
 
   struct IPlayer : IHealthable {
     IPlayer(int x, int y);
+
+    virtual std::set<std::pair<int, int>> get_attack_area() const = 0;
 
     virtual int get_lvl() const = 0;
 

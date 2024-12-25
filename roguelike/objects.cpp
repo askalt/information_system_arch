@@ -1,6 +1,8 @@
 #include "objects.h"
 
 #include <algorithm>
+#include <deque>
+#include <set>
 #include <string_view>
 
 #include "map.h"
@@ -51,6 +53,35 @@ void Player::move(const IGameState::PlayerMoveEvent& event) {
   if (!map->has_object(xx, yy, static_cast<IGameState::Object*>(this))) {
     set_pos(xx, yy);
   }
+}
+
+std::set<std::pair<int, int>> Player::get_attack_area() const {
+  /* TODO: Take from inventory. */
+  const int d = 6;
+  const int dx[] = {0, 0, 1, -1};
+  const int dy[] = {-1, 1, 0, 0};
+
+  std::set<std::pair<int, int>> vis;
+  std::deque<std::pair<int, int>> q;
+  auto map = state->get_current_map();
+  q.push_back({x, y});
+  vis.insert({x, y});
+  auto obstacles = map->get_obstacles();
+  while (!q.empty()) {
+    auto [nx, ny] = q.front();
+    q.pop_front();
+    for (size_t i = 0; i < sizeof(dx) / sizeof(int); ++i) {
+      auto xx = nx + dx[i];
+      auto yy = ny + dy[i];
+      if (obstacles.find({xx, yy}) == obstacles.end() &&
+          vis.find({xx, yy}) == vis.end() && abs(xx - x) + abs(yy - y) <= d) {
+        vis.insert({xx, yy});
+        q.push_back({xx, yy});
+      }
+    }
+  }
+
+  return vis;
 }
 
 int Player::get_lvl() const { return lvl.get_lvl(); }
@@ -244,7 +275,7 @@ void Bat::move() {
     /* Sleep. */
     return;
   }
-  /* View field, try to be closer. */
+  /* View field, try to be farther. */
   const int dx[] = {0, 1, -1, 0, 0};
   const int dy[] = {0, 0, 0, 1, -1};
   std::pair<int, int> vars[5]{};
