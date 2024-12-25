@@ -3,6 +3,7 @@
 #include <locale.h>
 
 #include <algorithm>
+#include <set>
 #include <sstream>
 #include <thread>
 #include <unordered_map>
@@ -24,6 +25,9 @@ const int H = 200;
 const int W_FIELD = 70;
 const int H_FIELD = 40;
 
+/* Add it to color pair argument to use blue backrground. */
+const int BLUE_SHIFT = 6;
+
 void init_UI(int argc, char *argv[]) {
   setlocale(LC_ALL, "");
 #ifdef XCURSES
@@ -38,10 +42,21 @@ void init_UI(int argc, char *argv[]) {
   }
   keypad(stdscr, true);
   start_color();
-  init_pair(1, COLOR_GREEN, COLOR_BLACK);
-  init_pair(2, COLOR_MAGENTA, COLOR_BLACK);
-  init_pair(3, COLOR_RED, COLOR_BLACK);
-  init_pair(4, COLOR_YELLOW, COLOR_BLACK);
+
+  init_pair(1, COLOR_WHITE, COLOR_BLACK);
+  init_pair(2, COLOR_GREEN, COLOR_BLACK);
+  init_pair(3, COLOR_MAGENTA, COLOR_BLACK);
+  init_pair(4, COLOR_RED, COLOR_BLACK);
+  init_pair(5, COLOR_YELLOW, COLOR_BLACK);
+  init_pair(6, COLOR_BLUE, COLOR_BLACK);
+
+  init_pair(7, COLOR_WHITE, COLOR_BLUE);
+  init_pair(8, COLOR_GREEN, COLOR_BLUE);
+  init_pair(9, COLOR_MAGENTA, COLOR_BLUE);
+  init_pair(10, COLOR_RED, COLOR_BLUE);
+  init_pair(11, COLOR_YELLOW, COLOR_BLUE);
+  init_pair(12, COLOR_BLUE, COLOR_BLUE);
+
   noecho();
   resize_term(H, W);
 }
@@ -149,9 +164,9 @@ struct GameUI {
     /* Leave place for current object description. */
     int field_start_x = header_end_x + 3;
     draw_field(field_start_x);
-    draw_info(field_start_x + H_FIELD + 1);
+    draw_help(field_start_x + H_FIELD + 1);
     draw_current_object_info(header_end_x);
-    move(carrier_x, carrier_y);
+    move(carriage_x, carriage_y);
     refresh();
   }
 
@@ -162,24 +177,24 @@ struct GameUI {
       switch (c) {
         /* Internal UI events. */
         case KEY_LEFT:
-          carried_pinned = false;
-          carrier_y = std::max(0, carrier_y - 1);
+          carriage_pinned = false;
+          carriage_y = std::max(0, carriage_y - 1);
           break;
         case KEY_RIGHT:
-          carried_pinned = false;
-          carrier_y = std::min(W - 1, carrier_y + 1);
+          carriage_pinned = false;
+          carriage_y = std::min(W - 1, carriage_y + 1);
           break;
         case KEY_UP:
-          carried_pinned = false;
-          carrier_x = std::max(0, carrier_x - 1);
+          carriage_pinned = false;
+          carriage_x = std::max(0, carriage_x - 1);
           break;
         case KEY_DOWN:
-          carried_pinned = false;
-          carrier_x = std::min(H - 1, carrier_x + 1);
+          carriage_pinned = false;
+          carriage_x = std::min(H - 1, carriage_x + 1);
           break;
         case 'p':
         case 'P':
-          carried_pinned = true;
+          carriage_pinned = true;
           break;
 
         /* External events. */
@@ -230,11 +245,11 @@ struct GameUI {
   }
 
   void draw_healthbar(int health, int max_health) {
-    attron(COLOR_PAIR(1));
+    attron(COLOR_PAIR(2));
     for (size_t i = 0; i < health; ++i) {
       printw("|");
     }
-    attroff(COLOR_PAIR(1));
+    attroff(COLOR_PAIR(2));
     for (size_t i = 0; i < max_health - health; ++i) {
       printw("|");
     }
@@ -260,17 +275,19 @@ struct GameUI {
     auto [lx, ux] = get_bounds(player_x, H_FIELD - 2);
     auto [ly, uy] = get_bounds(player_y, W_FIELD - 2);
 
-    bool set_carrier_to_player = false;
+    bool set_carriage_to_player = false;
     const auto map = state->get_map();
     if (map.name != previous_location) {
-      /* Location changes. So pin carrier and move to it to player. */
-      carried_pinned = true;
-      set_carrier_to_player = true;
+      /* Location changes. So pin the carriage and move to it to player. */
+      carriage_pinned = true;
+      set_carriage_to_player = true;
     }
     previous_location = map.name;
 
     auto previous_object = current_object;
     current_object = nullptr;
+
+    /* First pass: determine on which objects carriage locates. */
     for (const auto &object : map.objects) {
       auto [x, y] = object->get_pos();
       /* Check that object is contained in a visual field. */
@@ -279,59 +296,90 @@ struct GameUI {
         x = rem(x, H_FIELD - 2) + 1;
         y = rem(y, W_FIELD - 2) + 1;
 
-        auto symbol = make_object_symbol(object);
-        int attr = 0;
-        switch (descriptor) {
-          case IGameState::ObjectDescriptor::ENTER: {
-            attr = COLOR_PAIR(2);
-            break;
-          }
-          case IGameState::ObjectDescriptor::ORC: {
-            attr = COLOR_PAIR(3);
-            break;
-          }
-          case IGameState::ObjectDescriptor::BAT: {
-            attr = COLOR_PAIR(4);
-          }
-          default: {
-            break;
-          }
-        }
-
-        attron(attr);
-        mvaddch(start_x + x, y, symbol);
-        attroff(attr);
-
         if (descriptor == IGameState::ObjectDescriptor::PLAYER &&
-            set_carrier_to_player) {
-          carrier_x = start_x + x;
-          carrier_y = y;
+            set_carriage_to_player) {
+          carriage_x = start_x + x;
+          carriage_y = y;
         }
-        if (carried_pinned && object == previous_object) {
-          carrier_x = start_x + x;
-          carrier_y = y;
+        if (carriage_pinned && object == previous_object) {
+          carriage_x = start_x + x;
+          carriage_y = y;
         }
-        if (carrier_x == start_x + x && carrier_y == y) {
+        if (carriage_x == start_x + x && carriage_y == y) {
           /* Remember current object. */
           current_object = object;
         }
       }
     }
+
+    /* Second pass, draw a field. */
+    std::set<std::pair<int, int>> attack_area;
+    if (current_object == static_cast<IGameState::Object *>(player)) {
+      attack_area = player->get_attack_area();
+    }
+
+    for (const auto &object : map.objects) {
+      auto [x, y] = object->get_pos();
+      /* Check that object is contained in a visual field. */
+      if (lx <= x && x < ux && ly <= y && y < uy) {
+        auto descriptor = object->get_descriptor();
+        bool in_attack_area = attack_area.find({x, y}) != attack_area.end();
+        if (in_attack_area) {
+          attack_area.erase({x, y});
+        }
+
+        x = rem(x, H_FIELD - 2) + 1;
+        y = rem(y, W_FIELD - 2) + 1;
+        auto symbol = make_object_symbol(object);
+        int attr = 0;
+        switch (descriptor) {
+          case IGameState::ObjectDescriptor::ENTER: {
+            attr = COLOR_PAIR(3 + BLUE_SHIFT * in_attack_area);
+            break;
+          }
+          case IGameState::ObjectDescriptor::ORC: {
+            attr = COLOR_PAIR(4 + BLUE_SHIFT * in_attack_area);
+            break;
+          }
+          case IGameState::ObjectDescriptor::BAT: {
+            attr = COLOR_PAIR(5 + BLUE_SHIFT * in_attack_area);
+          }
+          default: {
+            attr = COLOR_PAIR(1 + BLUE_SHIFT * in_attack_area);
+            break;
+          }
+        }
+        attron(attr);
+        mvaddch(start_x + x, y, symbol);
+        attroff(attr);
+      }
+    }
+    for (auto [x, y] : attack_area) {
+      /* Check that object is contained in a visual field. */
+      if (lx <= x && x < ux && ly <= y && y < uy) {
+        x = rem(x, H_FIELD - 2) + 1;
+        y = rem(y, W_FIELD - 2) + 1;
+        char symbol = ' ';
+        attron(COLOR_PAIR(11));
+        mvaddch(start_x + x, y, symbol);
+        attroff(COLOR_PAIR(11));
+      }
+    }
   }
 
-  void draw_info(int start_x) {
+  void draw_help(int start_x) {
     move(start_x, 0);
     printw("Help:\n");
-    printw("- Carrier:       ARROWS\n");
-    printw("- Pin carrier:   P\n");
+    printw("- Carriage:      ARROWS\n");
+    printw("- Pin carriage:  P\n");
     printw("- Hero:          WASD\n");
     printw("- Apply:         ENTER\n");
   }
 
   std::shared_ptr<const IGameState> state;
-  int carrier_x{};
-  int carrier_y{};
-  bool carried_pinned{};
+  int carriage_x{};
+  int carriage_y{};
+  bool carriage_pinned{};
   std::string_view previous_location;
   IGameState::Object *current_object = nullptr;
 };

@@ -106,6 +106,23 @@ bool Map::has_object(int x, int y, const IGameState::Object* exclude) const {
   return false;
 }
 
+std::set<std::pair<int, int>> Map::get_obstacles() const {
+  std::set<std::pair<int, int>> obstacles;
+
+#define run_over(objs)            \
+  for (const auto& obj : objs) {  \
+    auto [x, y] = obj->get_pos(); \
+    obstacles.insert({x, y});     \
+  }
+
+  run_over(walls);
+  run_over(dungeon_blocks);
+  run_over(borders);
+  run_over(chests);
+
+  return obstacles;
+}
+
 std::tuple<int, int> Map::start_pos() const { return exit->get_pos(); }
 /** */
 

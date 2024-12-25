@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <vector>
+#include <set>
 
 #include "objects.h"
 #include "panic.h"
@@ -19,6 +20,7 @@ struct Map {
   friend class World;
 
   bool has_object(int x, int y, const IGameState::Object* exclude) const;
+  std::set<std::pair<int, int>> get_obstacles() const;
 
   template <typename T>
   bool remove_object(std::vector<std::unique_ptr<T>>& container, T* item) {
