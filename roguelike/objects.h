@@ -28,6 +28,8 @@ struct Player : public GameStateObject, IGameState::IPlayer {
 
   void move(const IGameState::PlayerMoveEvent& event);
 
+  std::set<std::pair<int, int>> get_attack_area() const override;
+
   void heal(int hp);
 
   void set_pos(int xx, int yy);
