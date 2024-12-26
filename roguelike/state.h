@@ -33,9 +33,11 @@ struct GameState : IGameState {
 
   void apply_event(const Event& event) override;
 
- private:
   Map* get_current_map() const;
 
+  void damage_player(int dmg);
+
+ private:
   void player_move(const PlayerMoveEvent& event);
 
   void move_on(Map* map);
@@ -61,10 +63,12 @@ struct GameStateObject {
 
   GameStateObject();
 
-  void set_state(GameState* state);
+  virtual void set_state(GameState* state);
 
   // Apply object.
   virtual void apply() const {}
+
+  GameState* get_state() const;
 
  protected:
   GameState* state{};

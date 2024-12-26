@@ -115,6 +115,8 @@ IGameState::ObjectDescriptor Mob::get_descriptor() const { return descriptor; }
 
 std::tuple<int, int> Mob::get_health() const { return {health, max_health}; }
 
+int Mob::get_damage() const { return dmg; }
+
 void Mob::damage(int x) {
   health = std::max(health - x, 0);
   if (health == 0) {
@@ -199,108 +201,138 @@ const int ORC_DAMAGE_RADIUS = 3;
 const int ORC_VIEW_FIELD = 6;
 const int ORC_DMG = 2;
 
-/* Orc impl. */
-Orc::Orc(int x, int y)
-    : Mob{x, y, 15, 15, ORC_DMG, 4, IGameState::ObjectDescriptor::ORC} {}
+struct DistanceComparatorLess {
+  bool operator()(const std::pair<int, int>& lhs,
+                  const std::pair<int, int>& rhs) const {
+    if (lhs.first != rhs.first) {
+      return lhs.first < rhs.first;
+    }
+    return false;
+  }
+};
 
-void Orc::move() {
-  auto [px, py] = state->get_player()->get_pos();
-  auto map = state->get_current_map();
+struct DistanceComparatorGreater {
+  bool operator()(const std::pair<int, int>& lhs,
+                  const std::pair<int, int>& rhs) const {
+    if (lhs.first != rhs.first) {
+      return lhs.first > rhs.first;
+    }
+    return false;
+  }
+};
+
+bool OrcDecideAttack::operator()(Orc& orc) {
+  auto [x, y] = orc.get_pos();
+  auto player = dynamic_cast<Player*>(orc.state->get_player());
+  auto [px, py] = player->get_pos();
   int dist = abs(x - px) + abs(y - py);
   if (dist < ORC_DAMAGE_RADIUS) {
-    dynamic_cast<Player*>(state->get_player())->damage(2);
-  } else if (dist <= ORC_VIEW_FIELD) {
-    /* View field, try to be closer. */
-    const int dx[] = {0, 1, -1, 0, 0};
-    const int dy[] = {0, 0, 0, 1, -1};
-    std::pair<int, int> vars[5]{};
-    int j = 0;
-    for (int i = 0; i < sizeof(dx) / sizeof(int); ++i) {
-      int xx = x + dx[i];
-      int yy = y + dy[i];
-      if (!map->has_object(xx, yy, static_cast<IGameState::Object*>(this))) {
-        vars[j].second = i;
-        vars[j].first = abs(xx - px) + abs(yy - py);
-        j++;
-      }
-    }
-    if (j == 0) {
-      return;
-    }
-    if (dist <= ORC_DAMAGE_RADIUS && rand() % 3 == 0) {
-      /*
-       * The orc can strike despite the fact that it will not
-       * catch up with the enemy further with
-       * a probability of 33%.
-       */
-      dynamic_cast<Player*>(state->get_player())->damage(dmg);
-      return;
-    }
-    /* Choose random step that will bring us as
-     * close to the player as possible.
+    /* Attack always when player is too close
+     * to could attack on next step.
      */
-    sort(vars, vars + j);
-    int cntv = 0;
-    while (cntv < sizeof(vars) / sizeof(vars[0]) &&
-           vars[cntv].first == vars[0].first) {
-      cntv++;
-    }
-    int choose = rand() % cntv;
-    int new_x = x + dx[vars[choose].second];
-    int new_y = y + dy[vars[choose].second];
-    x = new_x;
-    y = new_y;
+    return true;
   }
-
-  /* TODO: random walk. */
+  if (dist == ORC_DAMAGE_RADIUS && rand() % 3 == 0) {
+    /*
+     * Orc can strike despite the fact that he will not
+     * catch up with the enemy further with
+     * a probability of 33%.
+     */
+    return true;
+  }
+  return false;
 }
 
+bool OrcDecideCloser::operator()(Orc& orc) {
+  auto [x, y] = orc.get_pos();
+  auto player = dynamic_cast<Player*>(orc.state->get_player());
+  auto [px, py] = player->get_pos();
+  int dist = abs(x - px) + abs(y - py);
+  return dist <= ORC_VIEW_FIELD;
+}
+
+/* Orc impl. */
+Orc::Orc(int x, int y)
+    : DecisionTreeMob{
+          x,
+          y,
+          15,
+          ORC_DMG,
+          4,
+          IGameState::ObjectDescriptor::ORC,
+          std::make_shared<ConditionNode<Orc>>(
+              *this,
+              /* Conditions. */
+              std::vector<ConditionNode<Orc>::Node>{
+                  {
+                      .predicate = [](Orc& orc) -> bool {
+                        return OrcDecideAttack{}(orc);
+                      },
+                      .next = std::make_shared<AttackNode<Orc>>(*this),
+                  },
+                  {
+                      .predicate = [](Orc& orc) -> bool {
+                        return OrcDecideCloser{}(orc);
+                      },
+                      .next = std::make_shared<
+                          DistanceComparatorNode<Orc, DistanceComparatorLess>>(
+                          *this),
+                  },
+              },
+              /* Default. */
+              std::make_shared<RandowWalkNode<Orc>>(x, y, 8, *this))} {}
+
+/* Bat impl. */
 const int BAT_DMG = 0;
 const int BAT_EXP = 2;
 
-Bat::Bat(int x, int y)
-    : Mob{x, y, 7, 7, BAT_DMG, BAT_EXP, IGameState::ObjectDescriptor::BAT} {}
+bool BatDecideRun::operator()(Bat& bat) {
+  auto [x, y] = bat.get_pos();
+  auto player = dynamic_cast<Player*>(bat.state->get_player());
+  auto [px, py] = player->get_pos();
+  int dist = abs(x - px) + abs(y - py);
+  return dist <= 5;
+}
 
-void Bat::move() {
+bool BatDecideSleep::operator()(Bat& bat) {
   /*
    * Bat can sleep with 25% probability.
    */
-  if (rand() % 4 == 0) {
-    return;
-  }
-  auto [px, py] = state->get_player()->get_pos();
-  auto map = state->get_current_map();
-  int dist = abs(x - px) + abs(y - py);
-  if (dist > 7) {
-    /* Sleep. */
-    return;
-  }
-  /* View field, try to be farther. */
-  const int dx[] = {0, 1, -1, 0, 0};
-  const int dy[] = {0, 0, 0, 1, -1};
-  std::pair<int, int> vars[5]{};
-  int j = 0;
-  for (int i = 0; i < sizeof(dx) / sizeof(int); ++i) {
-    int xx = x + dx[i];
-    int yy = y + dy[i];
-    if (!map->has_object(xx, yy, static_cast<IGameState::Object*>(this))) {
-      vars[j].second = i;
-      vars[j].first = -(abs(xx - px) + abs(yy - py));
-      j++;
-    }
-    if (j == 0) {
-      return;
-    }
-  }
-  sort(vars, vars + j);
-  int cntv = 0;
-  while (cntv < sizeof(vars) / sizeof(vars[0]) &&
-         vars[cntv].first == vars[0].first) {
-    cntv++;
-  }
-  int choose = rand() % cntv;
-  int new_x = x + dx[vars[choose].second];
-  int new_y = y + dy[vars[choose].second];
-  x = new_x;
-  y = new_y;
+  return rand() % 4 == 0;
 }
+
+Bat::Bat(int x, int y)
+    : DecisionTreeMob{
+          x,
+          y,
+          7,
+          0,
+          BAT_EXP,
+          IGameState::ObjectDescriptor::BAT,
+          std::make_shared<ConditionNode<Bat>>(
+              *this,
+              std::vector<ConditionNode<Bat>::Node>{
+                  {
+                      .predicate = [](Bat& bat) -> bool {
+                        return BatDecideSleep{}(bat);
+                      },
+                      .next = std::make_shared<NoOpNode>(),
+                  },
+                  {
+                      .predicate = [](Bat& bat) -> bool {
+                        return BatDecideRun{}(bat);
+                      },
+                      .next = std::make_shared<DistanceComparatorNode<
+                          Bat, DistanceComparatorGreater>>(*this),
+                  },
+              },
+              /* Default. */
+              std::make_shared<RandowWalkNode<Bat>>(x, y, 8, *this))} {}
+
+/* DecisionTreeMob impl. */
+DecisionTreeMob::DecisionTreeMob(int x, int y, int max_health, int dmg, int exp,
+                                 IGameState::ObjectDescriptor descriptor,
+                                 std::shared_ptr<DecisionTreeNode> root)
+    : Mob{x, y, max_health, max_health, dmg, exp, descriptor}, root{root} {}
+
+void DecisionTreeMob::move() { interpretate(root); }

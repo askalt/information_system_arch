@@ -16,6 +16,11 @@ bool IGameState::Object::on_same_pos(const IGameState::Object* other) const {
 
 IGameState::Object::Object(int x, int y) : x{x}, y{y} {}
 
+void IGameState::Object::set_pos(int xx, int yy) {
+  x = xx;
+  y = yy;
+}
+
 std::optional<std::string_view> IGameState::Object::get_label() const {
   return std::nullopt;
 }
