@@ -71,6 +71,8 @@ struct IGameState {
 
   struct IMob : IHealthable {
     IMob(int x, int y);
+
+    virtual std::set<std::pair<int, int>> get_attack_area() const = 0;
   };
 
   struct IEnter : Object {
