@@ -51,17 +51,19 @@ struct Player : public GameStateObject, IGameState::IPlayer {
   Level lvl{};
 };
 
-struct Mob : public GameStateObject, IGameState::IHealthable {
+struct Mob : public GameStateObject, IGameState::IMob {
   friend class GameState;
 
-  Mob(int x, int y, int health, int max_health, int dmg, int exp,
-      IGameState::ObjectDescriptor descriptor);
+  Mob(int x, int y, int health, int max_health, int attack_radius, int dmg,
+      int exp, IGameState::ObjectDescriptor descriptor);
 
   void damage(int x);
 
   int get_damage() const;
 
   virtual void move() = 0;
+
+  std::set<std::pair<int, int>> get_attack_area() const override;
 
   std::tuple<int, int> get_health() const override;
 
@@ -71,6 +73,7 @@ struct Mob : public GameStateObject, IGameState::IHealthable {
   IGameState::ObjectDescriptor descriptor;
   int health;
   int max_health;
+  int attack_radius;
   int dmg;
   int exp;
 };
@@ -155,7 +158,7 @@ struct DecisionTreeMob : public Mob {
   friend class GameState;
 
   DecisionTreeMob(int x, int y, int max_health, int dmg, int exp,
-                  IGameState::ObjectDescriptor descriptor,
+                  int attack_radius, IGameState::ObjectDescriptor descriptor,
                   std::shared_ptr<DecisionTreeNode> root);
 
   void move() override;
