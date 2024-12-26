@@ -30,8 +30,10 @@ IGameState::Event::Event(IGameState::PlayerMoveEvent event)
     : player_move(std::move(event)), type(EventType::PlayerMove) {}
 IGameState::Event::Event(NoOpEvent event)
     : no_op(std::move(event)), type(EventType::NoOp) {}
-IGameState::Event::Event(ApplyEvent event)
-    : apply(std::move(event)), type(EventType::Apply) {}
+IGameState::Event::Event(ApplyObjectEvent event)
+    : apply_object(std::move(event)), type(EventType::Apply) {}
+IGameState::Event::Event(ApplyItemEvent event)
+  : apply_item(std::move(event)), type(EventType::ApplyItem) {}
 
 /* IEnter impl. */
 IGameState::IEnter::IEnter(int x, int y, std::string transition)
@@ -68,3 +70,6 @@ IGameState::IPlayer::IPlayer(int x, int y) : IGameState::IHealthable{x, y} {}
 
 /* IMob impl. */
 IGameState::IMob::IMob(int x, int y) : IGameState::IHealthable{x, y} {}
+
+IGameState::ItemDescriptor IGameState::Item::get_descriptor() const { return descriptor; }
+
