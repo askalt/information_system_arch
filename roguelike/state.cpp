@@ -28,8 +28,22 @@ void GameState::apply_event(const Event& event) {
       player_move(event.player_move);
       break;
     case EventType::Apply:
-      apply(event.apply);
+      apply(event.apply_object);
       break;
+    case EventType::ApplyItem: {
+      auto player = dynamic_cast<Player *>(get_player());
+      auto item_from_stash =
+        std::move(player->take_item(event.apply_item.pos));
+      assert(item_from_stash != nullptr);
+      auto item_from_hand =
+        std::unique_ptr<Item>(std::move(player->hand));
+      player->hand = std::unique_ptr<Stick>{dynamic_cast<Stick *>(item_from_stash.release())};
+      if (item_from_hand != nullptr) {
+        bool ok = player->put_item(item_from_hand);
+        assert(ok);
+      }
+      break;
+    }
     default:
       break;
   }
@@ -59,6 +73,7 @@ const IGameState::MapDescription GameState::get_map() const {
 }
 
 void GameState::move_on(Map* map) {
+  assert(map != nullptr);
   auto [x, y] = world->player->get_pos();
   map_stack.push_back(MapStackNode{.x = x, .y = y, .map = map});
   auto [sx, sy] = map->start_pos();
@@ -72,19 +87,13 @@ void GameState::move_back() {
   }
 }
 
-void GameState::apply(const ApplyEvent& e) {
-  auto obj = dynamic_cast<GameStateObject*>(e.object);
-  if (obj == nullptr) {
-    /* Do nothing. */
-    return;
-  }
-  obj->apply();
+void GameState::apply(const ApplyObjectEvent& e) {
+  auto object = dynamic_cast<GameStateObject *>(e.object);
+  if (object != nullptr)
+    object->apply();
 }
 
 /***/
-
-/* GameStateObject impl. */
-GameStateObject::GameStateObject() {}
 
 void GameStateObject::set_state(GameState* state) { this->state = state; }
 

@@ -25,6 +25,7 @@ struct GameState : IGameState {
   friend class Border;
   friend class Orc;
   friend class Bat;
+  friend class ItemObject;
 
   GameState(std::unique_ptr<World> world);
   const MapDescription get_map() const override;
@@ -46,7 +47,7 @@ struct GameState : IGameState {
 
   void move_back();
 
-  void apply(const ApplyEvent& e);
+  void apply(const ApplyObjectEvent& e);
 
   struct MapStackNode {
     /* Position in the previous map. */
@@ -63,12 +64,14 @@ struct GameState : IGameState {
 struct GameStateObject {
   friend class GameState;
 
-  GameStateObject();
+  GameStateObject() = default;
 
   virtual void set_state(GameState* state);
 
   // Apply object.
-  virtual void apply() const {}
+  virtual void apply() {};
+
+  virtual ~GameStateObject() = default;
 
   GameState* get_state() const;
 

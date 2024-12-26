@@ -19,10 +19,10 @@ struct IGameState {
     VERTICAL_BORDER,
     CORNER,
     EXIT,
-    STICK,
-    SALVE,
     ORC,
     BAT,
+    ITEM,
+    ObjectDescriptorMAX,
   };
 
   struct Object {
@@ -43,6 +43,24 @@ struct IGameState {
 
    protected:
     int x, y;
+  };
+
+  enum class ItemDescriptor {
+      STICK,
+      SALVE,
+      ItemDescriptorMAX,
+  };
+
+  struct Item {
+      Item(ItemDescriptor descriptor) : descriptor{descriptor} {}
+      virtual void apply(Object *object) const = 0;
+
+      ItemDescriptor get_descriptor() const;
+
+      virtual ~Item() = default;
+
+  protected:
+      IGameState::ItemDescriptor descriptor;
   };
 
   struct MapDescription {
@@ -86,26 +104,34 @@ struct IGameState {
 
   enum class PlayerMoveEvent { Left, Right, Up, Down };
   struct NoOpEvent {};
-  struct ApplyEvent {
-    // Object to apply.
-    Object* object;
+
+  struct ApplyObjectEvent {
+      // Object to apply.
+      Object *object;
+  };
+
+  struct ApplyItemEvent {
+    int pos;
   };
 
   enum class EventType {
     PlayerMove,
     NoOp,
     Apply,
+    ApplyItem,
   };
 
   struct Event {
     Event(PlayerMoveEvent event);
     Event(NoOpEvent event);
-    Event(ApplyEvent event);
+    Event(ApplyObjectEvent event);
+    Event(ApplyItemEvent event);
 
     union {
       PlayerMoveEvent player_move;
       NoOpEvent no_op;
-      ApplyEvent apply;
+      ApplyObjectEvent apply_object;
+      ApplyItemEvent apply_item;
     };
     EventType type;
   };

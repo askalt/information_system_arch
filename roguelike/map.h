@@ -24,6 +24,7 @@ struct Map {
   friend class GameState;
   friend class Player;
   friend class Mob;
+  friend class ItemObject;
 
   /* Each map contains player. */
   Map(IGameState::Object* player);
@@ -35,16 +36,12 @@ struct Map {
   std::set<std::pair<int, int>> get_obstacles() const;
 
   template <typename T>
-  bool remove_object(std::vector<std::unique_ptr<T>>& container, T* item) {
-    size_t pos = std::string::npos;
-    for (size_t i = 0; i < container.size(); ++i) {
-      if (container[i].get() == item) {
-        pos = i;
-        break;
-      }
-    }
-    if (pos != std::string::npos) {
-      container.erase(container.begin() + pos);
+  bool remove_object(std::vector<std::unique_ptr<T>> &container, T *item) {
+    auto container_it = std::find_if(container.begin(), container.end(),
+      [&](const std::unique_ptr<T> &ptr) { return ptr.get() == item; });
+
+    if (container_it != container.end()) {
+      container.erase(container_it);
       auto as_obj = static_cast<IGameState::Object*>(item);
       auto it = std::find(objects.begin(), objects.end(), as_obj);
       if (it == objects.end()) {
@@ -70,6 +67,8 @@ struct Map {
   std::vector<std::unique_ptr<Wall>> walls;
   std::vector<std::unique_ptr<Border>> borders;
   std::vector<std::unique_ptr<Mob>> mobs;
+  std::vector<std::unique_ptr<ItemObject>> items;
+
   std::unique_ptr<Exit> exit;
   std::string name;
 
