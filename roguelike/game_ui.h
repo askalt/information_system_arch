@@ -25,8 +25,9 @@ const int H = 200;
 const int W_FIELD = 70;
 const int H_FIELD = 40;
 
-/* Add it to color pair argument to use blue backrground. */
+/* Add it to color pair argument [1;6] to use different backrground. */
 const int BLUE_SHIFT = 6;
+const int RED_SHIFT = BLUE_SHIFT * 2;
 
 void init_UI(int argc, char *argv[]) {
   setlocale(LC_ALL, "");
@@ -56,6 +57,13 @@ void init_UI(int argc, char *argv[]) {
   init_pair(10, COLOR_RED, COLOR_BLUE);
   init_pair(11, COLOR_YELLOW, COLOR_BLUE);
   init_pair(12, COLOR_BLUE, COLOR_BLUE);
+
+  init_pair(13, COLOR_WHITE, COLOR_RED);
+  init_pair(14, COLOR_GREEN, COLOR_RED);
+  init_pair(15, COLOR_MAGENTA, COLOR_RED);
+  init_pair(16, COLOR_BLACK, COLOR_RED);
+  init_pair(17, COLOR_YELLOW, COLOR_RED);
+  init_pair(18, COLOR_BLUE, COLOR_RED);
 
   noecho();
   resize_term(H, W);
@@ -313,9 +321,15 @@ struct GameUI {
     }
 
     /* Second pass, draw a field. */
+    int attack_field_color_pair_shift = 0;
     std::set<std::pair<int, int>> attack_area;
     if (current_object == static_cast<IGameState::Object *>(player)) {
       attack_area = player->get_attack_area();
+      attack_field_color_pair_shift = BLUE_SHIFT;
+    } else if (auto mob = dynamic_cast<IGameState::IMob *>(current_object);
+               mob != nullptr) {
+      attack_area = mob->get_attack_area();
+      attack_field_color_pair_shift = RED_SHIFT;
     }
 
     for (const auto &object : map.objects) {
@@ -334,18 +348,23 @@ struct GameUI {
         int attr = 0;
         switch (descriptor) {
           case IGameState::ObjectDescriptor::ENTER: {
-            attr = COLOR_PAIR(3 + BLUE_SHIFT * in_attack_area);
+            attr =
+                COLOR_PAIR(3 + attack_field_color_pair_shift * in_attack_area);
             break;
           }
           case IGameState::ObjectDescriptor::ORC: {
-            attr = COLOR_PAIR(4 + BLUE_SHIFT * in_attack_area);
+            attr =
+                COLOR_PAIR(4 + attack_field_color_pair_shift * in_attack_area);
             break;
           }
           case IGameState::ObjectDescriptor::BAT: {
-            attr = COLOR_PAIR(5 + BLUE_SHIFT * in_attack_area);
+            attr =
+                COLOR_PAIR(5 + attack_field_color_pair_shift * in_attack_area);
+            break;
           }
           default: {
-            attr = COLOR_PAIR(1 + BLUE_SHIFT * in_attack_area);
+            attr =
+                COLOR_PAIR(1 + attack_field_color_pair_shift * in_attack_area);
             break;
           }
         }
@@ -360,9 +379,9 @@ struct GameUI {
         x = rem(x, H_FIELD - 2) + 1;
         y = rem(y, W_FIELD - 2) + 1;
         char symbol = ' ';
-        attron(COLOR_PAIR(11));
+        attron(COLOR_PAIR(1 + attack_field_color_pair_shift));
         mvaddch(start_x + x, y, symbol);
-        attroff(COLOR_PAIR(11));
+        attroff(COLOR_PAIR(1 + attack_field_color_pair_shift));
       }
     }
   }

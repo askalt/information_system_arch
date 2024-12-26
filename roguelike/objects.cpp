@@ -55,15 +55,13 @@ void Player::move(const IGameState::PlayerMoveEvent& event) {
   }
 }
 
-std::set<std::pair<int, int>> Player::get_attack_area() const {
-  /* TODO: Take from inventory. */
-  const int d = 6;
+std::set<std::pair<int, int>> bfs_get_attack_area(Map* map, int x, int y,
+                                                  int d) {
   const int dx[] = {0, 0, 1, -1};
   const int dy[] = {-1, 1, 0, 0};
 
   std::set<std::pair<int, int>> vis;
   std::deque<std::pair<int, int>> q;
-  auto map = state->get_current_map();
   q.push_back({x, y});
   vis.insert({x, y});
   auto obstacles = map->get_obstacles();
@@ -84,6 +82,12 @@ std::set<std::pair<int, int>> Player::get_attack_area() const {
   return vis;
 }
 
+std::set<std::pair<int, int>> Player::get_attack_area() const {
+  /* TODO: Take radius from inventory. */
+  const int d = 6;
+  return bfs_get_attack_area(state->get_current_map(), x, y, d);
+}
+
 int Player::get_lvl() const { return lvl.get_lvl(); }
 
 int Player::get_exp() const { return lvl.get_exp(); }
@@ -102,12 +106,13 @@ void Player::set_pos(int xx, int yy) {
 void Player::add_exp(int count) { lvl.add_exp(count); }
 
 /* Mob impl/ */
-Mob::Mob(int x, int y, int health, int max_health, int dmg, int exp,
-         IGameState::ObjectDescriptor descriptor)
-    : IGameState::IHealthable{x, y},
+Mob::Mob(int x, int y, int health, int max_health, int attack_radius, int dmg,
+         int exp, IGameState::ObjectDescriptor descriptor)
+    : IGameState::IMob{x, y},
       descriptor{descriptor},
       health{health},
       max_health{max_health},
+      attack_radius{attack_radius},
       dmg{dmg},
       exp{exp} {}
 
@@ -125,6 +130,10 @@ void Mob::damage(int x) {
     /* Add exp. */
     dynamic_cast<Player*>(state->get_player())->add_exp(exp);
   }
+}
+
+std::set<std::pair<int, int>> Mob::get_attack_area() const {
+  return bfs_get_attack_area(state->get_current_map(), x, y, attack_radius);
 }
 
 /* Wall impl. */
@@ -259,6 +268,7 @@ Orc::Orc(int x, int y)
           15,
           ORC_DMG,
           4,
+          ORC_DAMAGE_RADIUS,
           IGameState::ObjectDescriptor::ORC,
           std::make_shared<ConditionNode<Orc>>(
               *this,
@@ -308,6 +318,7 @@ Bat::Bat(int x, int y)
           7,
           0,
           BAT_EXP,
+          0,
           IGameState::ObjectDescriptor::BAT,
           std::make_shared<ConditionNode<Bat>>(
               *this,
@@ -331,8 +342,10 @@ Bat::Bat(int x, int y)
 
 /* DecisionTreeMob impl. */
 DecisionTreeMob::DecisionTreeMob(int x, int y, int max_health, int dmg, int exp,
+                                 int attack_radius,
                                  IGameState::ObjectDescriptor descriptor,
                                  std::shared_ptr<DecisionTreeNode> root)
-    : Mob{x, y, max_health, max_health, dmg, exp, descriptor}, root{root} {}
+    : Mob{x, y, max_health, max_health, attack_radius, dmg, exp, descriptor},
+      root{root} {}
 
 void DecisionTreeMob::move() { interpretate(root); }
