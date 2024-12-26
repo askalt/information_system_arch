@@ -4,7 +4,7 @@ TEST_BIN ?= test_bin
 TEST     ?= test
 LIBS     ?= -lncurses
 
-CPP           := main.cpp map.cpp objects.cpp state.cpp entities.cpp
+CPP           := main.cpp map.cpp objects.cpp state.cpp entities.cpp decision_tree.cpp
 TEST_CPP      := $(wildcard $(TEST)/*.cpp)
 
 TEST_STEMS    := $(TEST_CPP:.cpp=)

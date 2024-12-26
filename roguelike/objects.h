@@ -1,5 +1,6 @@
 
 #pragma once
+#include "decision_tree.h"
 #include "state.h"
 
 struct Level {
@@ -57,6 +58,8 @@ struct Mob : public GameStateObject, IGameState::IHealthable {
       IGameState::ObjectDescriptor descriptor);
 
   void damage(int x);
+
+  int get_damage() const;
 
   virtual void move() = 0;
 
@@ -146,20 +149,57 @@ struct Exit : public GameStateObject, IGameState::Object {
   void apply() const override;
 };
 
-// Stupid, just damages player.
-// Runs to player when see him.
-struct Orc : public Mob {
+// DecisionTreeMob executes decision tree to decide
+// where to go.
+struct DecisionTreeMob : public Mob {
   friend class GameState;
 
-  Orc(int x, int y);
+  DecisionTreeMob(int x, int y, int max_health, int dmg, int exp,
+                  IGameState::ObjectDescriptor descriptor,
+                  std::shared_ptr<DecisionTreeNode> root);
 
   void move() override;
+
+ private:
+  std::shared_ptr<DecisionTreeNode> root;
 };
 
-struct Bat : public Mob {
+struct OrcDecideAttack;
+struct OrcDecideCloser;
+
+// Stupid, just damages player.
+// Runs to player when see him.
+struct Orc : public DecisionTreeMob {
   friend class GameState;
+  friend class OrcDecideAttack;
+  friend class OrcDecideCloser;
+
+  Orc(int x, int y);
+};
+
+struct OrcDecideAttack {
+  bool operator()(Orc&);
+};
+
+struct OrcDecideCloser {
+  bool operator()(Orc&);
+};
+
+struct BatDecideRun;
+struct BatDecideSleep;
+
+struct Bat : public DecisionTreeMob {
+  friend class GameState;
+  friend class BatDecideRun;
+  friend class BatDecideSleep;
 
   Bat(int x, int y);
+};
 
-  void move() override;
+struct BatDecideRun {
+  bool operator()(Bat&);
+};
+
+struct BatDecideSleep {
+  bool operator()(Bat&);
 };

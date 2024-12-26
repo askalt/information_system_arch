@@ -44,6 +44,8 @@ void GameState::player_move(const PlayerMoveEvent& event) {
   }
 }
 
+void GameState::damage_player(int dmg) { world->player->damage(dmg); }
+
 const IGameState::MapDescription GameState::get_map() const {
   auto map = map_stack.back().map;
   return IGameState::MapDescription{
@@ -81,3 +83,5 @@ void GameState::apply(const ApplyEvent& e) {
 GameStateObject::GameStateObject() {}
 
 void GameStateObject::set_state(GameState* state) { this->state = state; }
+
+GameState* GameStateObject::get_state() const { return state; }
