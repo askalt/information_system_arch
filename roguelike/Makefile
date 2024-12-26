@@ -1,7 +1,10 @@
 
 BIN ?= bin
-CPP := main.cpp map.cpp objects.cpp state.cpp entities.cpp
-LIBS ?= -lncurses
+CPP := main.cpp map.cpp objects.cpp inventory.cpp items.cpp state.cpp entities.cpp
+#LIBS ?= -lncurses
+LIBS ?= -lSDL2 -lncurses#-l:pdcurses.so
+PDCURSESPATH = PDCurses/sdl2/
+#FLAGS += -L$(PDCURSESPATH)
 
 # Default world path.
 WORLD_PATH = ./world

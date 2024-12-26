@@ -1,8 +1,9 @@
-
 #pragma once
+#include "inventory.h"
+#include "items.h"
 #include "state.h"
 
-struct Player : public GameStateObject, IGameState::Object {
+struct Player : public GameStateObject, IGameState::Object, Inventory {
   friend class GameState;
   Player(int x, int y, int health, int max_health);
 
@@ -18,9 +19,15 @@ struct Player : public GameStateObject, IGameState::Object {
 
   void damage(int hp);
 
+  void set_hand(std::unique_ptr<Stick> _hand);
+
+  const Stick *get_hand();
+
  private:
+  //std::unique_ptr<Stick> stick;
   int health;
   int max_health;
+  std::unique_ptr<Stick> hand;
 };
 
 struct Mob : public GameStateObject, IGameState::Object {
@@ -34,6 +41,8 @@ struct Mob : public GameStateObject, IGameState::Object {
   virtual void move() = 0;
 
   IGameState::ObjectDescriptor get_descriptor() const override;
+
+  virtual void apply();
 
  private:
   IGameState::ObjectDescriptor descriptor;
@@ -87,7 +96,7 @@ struct Enter : public GameStateObject, IGameState::EnterObj {
 
   const Map* get_map() const;
 
-  void apply() const override;
+  void apply() override;
 
  private:
   std::string_view label;
@@ -112,7 +121,7 @@ struct Exit : public GameStateObject, IGameState::Object {
 
   IGameState::ObjectDescriptor get_descriptor() const override;
 
-  void apply() const override;
+  void apply() override;
 };
 
 // Stupid, just damages player.
@@ -131,4 +140,18 @@ struct Bat : public Mob {
   Bat(int x, int y);
 
   void move() override;
+};
+
+struct ItemObject : public GameStateObject, IGameState::Object {
+  friend class GameState;
+
+  ItemObject(std::unique_ptr<GameState::Item> item, int x, int y);
+
+  IGameState::ObjectDescriptor get_descriptor() const override;
+
+  const IGameState::Item *get_item() const;
+
+  std::unique_ptr<GameState::Item> item;
+
+  void apply() override;
 };

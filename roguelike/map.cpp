@@ -10,6 +10,7 @@
 #include "entities.h"
 #include "objects.h"
 #include "panic.h"
+#include "items.h"
 
 /* Map impl. */
 Map::Map(IGameState::Object* player) { objects.push_back(player); }
@@ -77,6 +78,13 @@ Map::Map(const std::filesystem::path& p) {
                                       std::move(std::make_unique<Bat>(x, y)))));
             break;
           }
+          case '/': {
+            auto item = std::unique_ptr<GameState::Item>(
+                            std::move(std::make_unique<Stick>()));
+            push_new_object(items, std::move(std::make_unique<ItemObject>(
+                                      std::move(item), x, y)));
+            break;
+          }
           default: {
             panic("unexpected symbol");
           }
@@ -95,15 +103,15 @@ void Map::push_exit(std::unique_ptr<Exit> exit_obj) {
 }
 
 bool Map::has_object(int x, int y, const IGameState::Object* exclude) const {
-  for (auto obj : objects) {
-    if (obj != exclude) {
-      auto [xo, yo] = obj->get_pos();
-      if (xo == x && yo == y) {
-        return true;
+  return std::any_of(objects.begin(), objects.end(),
+    [&](IGameState::Object *obj) {
+      if (obj != exclude) {
+        auto [xo, yo] = obj->get_pos();
+        return (xo == x && yo == y);
       }
+      return false;
     }
-  }
-  return false;
+  );
 }
 
 std::tuple<int, int> Map::start_pos() const { return exit->get_pos(); }

@@ -7,7 +7,8 @@
 
 /* Player impl. */
 Player::Player(int x, int y, int health, int max_health)
-    : IGameState::Object{x, y}, health{health}, max_health{max_health} {}
+    : IGameState::Object{x, y}, Inventory{5},
+    health{health}, max_health{max_health} {}
 
 IGameState::ObjectDescriptor Player::get_descriptor() const {
   return IGameState::ObjectDescriptor::PLAYER;
@@ -37,6 +38,14 @@ void Player::set_pos(int xx, int yy) {
   y = yy;
 }
 
+void Player::set_hand(std::unique_ptr<Stick> _hand) {
+  hand = std::move(_hand);
+}
+
+const Stick *Player::get_hand() {
+  return hand.get();
+}
+
 /* Mob impl/ */
 Mob::Mob(int x, int y, int health, int max_health,
          IGameState::ObjectDescriptor descriptor)
@@ -52,6 +61,18 @@ void Mob::damage(int x) {
   if (health == 0) {
     auto map = state->get_current_map();
     map->remove_object(map->mobs, this);
+  }
+}
+
+void Mob::apply() {
+  auto as_player = dynamic_cast<Player *>(state->get_player());
+  auto hand = as_player->get_hand();
+  if (hand != nullptr) {
+    auto [xp, yp] = as_player->get_pos();
+    auto [xm, ym] = get_pos();
+    int dist = std::abs(xp - xm) + std::abs(yp - ym);
+    if (dist <= hand->radius)
+      damage(hand->damage);
   }
 }
 
@@ -82,7 +103,7 @@ std::optional<std::string_view> DungeonBlock::get_label() const {
 
 /* Enter impl. */
 Enter::Enter(int x, int y, std::string_view label, std::string transition)
-    : IGameState::EnterObj{x, y, std::move(transition)}, label(label) {}
+    : IGameState::EnterObj{x, y, std::move(transition)}, label(label), map(nullptr) {}
 
 IGameState::ObjectDescriptor Enter ::get_descriptor() const {
   return IGameState::ObjectDescriptor::ENTER;
@@ -96,7 +117,7 @@ const std::string& Enter::get_transition() const { return transition; }
 
 const Map* Enter::get_map() const { return map; }
 
-void Enter::apply() const {
+void Enter::apply() {
   auto [xp, yp] = state->get_player()->get_pos();
   if (map != nullptr && abs(xp - x) + abs(yp - y) <= 1) {
     state->move_on(map);
@@ -118,7 +139,7 @@ IGameState::ObjectDescriptor Exit::get_descriptor() const {
   return IGameState::ObjectDescriptor::EXIT;
 }
 
-void Exit::apply() const {
+void Exit::apply() {
   auto [xp, yp] = state->get_player()->get_pos();
   if (abs(xp - x) + abs(yp - y) <= 1) {
     state->move_back();
@@ -227,4 +248,26 @@ void Bat::move() {
   int new_y = y + dy[vars[choose].second];
   x = new_x;
   y = new_y;
+}
+
+/* Item impl. */
+ItemObject::ItemObject(std::unique_ptr<GameState::Item> item, int x, int y)
+  : item(std::move(item)), IGameState::Object{x, y} {}
+
+IGameState::ObjectDescriptor ItemObject::get_descriptor() const {
+  return IGameState::ObjectDescriptor::ITEM;
+}
+
+const IGameState::Item *ItemObject::get_item() const {
+  return item.get();
+}
+
+void ItemObject::apply() {
+  auto player = dynamic_cast<Player *>(GameStateObject::state->get_player());
+  auto [xp, yp] = player->get_pos();
+  if (abs(xp - x) + abs(yp - y) <= 1) {
+    auto map = state->get_current_map();
+    if (player->put_item(item))
+      map->remove_object(map->items, this);
+  }
 }
