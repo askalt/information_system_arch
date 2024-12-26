@@ -36,7 +36,8 @@ void Level::add_exp(int count) {
 
 /* Player impl. */
 Player::Player(int x, int y, int health, int max_health)
-    : IGameState::IPlayer{x, y}, health{health}, max_health{max_health} {}
+    : IGameState::IPlayer{x, y}, Inventory{5},
+    health{health}, max_health{max_health} {}
 
 IGameState::ObjectDescriptor Player::get_descriptor() const {
   return IGameState::ObjectDescriptor::PLAYER;
@@ -83,8 +84,7 @@ std::set<std::pair<int, int>> bfs_get_attack_area(Map* map, int x, int y,
 }
 
 std::set<std::pair<int, int>> Player::get_attack_area() const {
-  /* TODO: Take radius from inventory. */
-  const int d = 6;
+  const int d = hand ? hand->radius : 0;
   return bfs_get_attack_area(state->get_current_map(), x, y, d);
 }
 
@@ -104,6 +104,14 @@ void Player::set_pos(int xx, int yy) {
 }
 
 void Player::add_exp(int count) { lvl.add_exp(count); }
+
+void Player::set_hand(std::unique_ptr<Stick> _hand) {
+  hand = std::move(_hand);
+}
+
+const Stick *Player::get_hand() {
+  return hand.get();
+}
 
 /* Mob impl/ */
 Mob::Mob(int x, int y, int health, int max_health, int attack_radius, int dmg,
@@ -126,14 +134,26 @@ void Mob::damage(int x) {
   health = std::max(health - x, 0);
   if (health == 0) {
     auto map = state->get_current_map();
-    map->remove_object(map->mobs, this);
     /* Add exp. */
     dynamic_cast<Player*>(state->get_player())->add_exp(exp);
+    map->remove_object(map->mobs, this);
   }
 }
 
 std::set<std::pair<int, int>> Mob::get_attack_area() const {
-  return bfs_get_attack_area(state->get_current_map(), x, y, attack_radius);
+    return bfs_get_attack_area(state->get_current_map(), x, y, attack_radius);
+}
+
+void Mob::apply() {
+  auto as_player = dynamic_cast<Player *>(state->get_player());
+  auto hand = as_player->get_hand();
+  if (hand != nullptr) {
+    auto [xp, yp] = as_player->get_pos();
+    auto [xm, ym] = get_pos();
+    int dist = std::abs(xp - xm) + std::abs(yp - ym);
+    if (dist <= hand->radius)
+      damage(hand->damage);
+  }
 }
 
 /* Wall impl. */
@@ -163,7 +183,7 @@ std::optional<std::string_view> DungeonBlock::get_label() const {
 
 /* Enter impl. */
 Enter::Enter(int x, int y, std::string_view label, std::string transition)
-    : IGameState::IEnter{x, y, std::move(transition)}, label(label) {}
+    : IGameState::IEnter{x, y, std::move(transition)}, label(label), map(nullptr) {}
 
 IGameState::ObjectDescriptor Enter ::get_descriptor() const {
   return IGameState::ObjectDescriptor::ENTER;
@@ -177,7 +197,7 @@ const std::string& Enter::get_transition() const { return transition; }
 
 const Map* Enter::get_map() const { return map; }
 
-void Enter::apply() const {
+void Enter::apply() {
   auto [xp, yp] = state->get_player()->get_pos();
   if (map != nullptr && abs(xp - x) + abs(yp - y) <= 1) {
     state->move_on(map);
@@ -199,7 +219,7 @@ IGameState::ObjectDescriptor Exit::get_descriptor() const {
   return IGameState::ObjectDescriptor::EXIT;
 }
 
-void Exit::apply() const {
+void Exit::apply() {
   auto [xp, yp] = state->get_player()->get_pos();
   if (abs(xp - x) + abs(yp - y) <= 1) {
     state->move_back();
@@ -349,3 +369,25 @@ DecisionTreeMob::DecisionTreeMob(int x, int y, int max_health, int dmg, int exp,
       root{root} {}
 
 void DecisionTreeMob::move() { interpretate(root); }
+
+/* Item impl. */
+ItemObject::ItemObject(std::unique_ptr<GameState::Item> item, int x, int y)
+  : item(std::move(item)), IGameState::Object{x, y} {}
+
+IGameState::ObjectDescriptor ItemObject::get_descriptor() const {
+  return IGameState::ObjectDescriptor::ITEM;
+}
+
+const IGameState::Item *ItemObject::get_item() const {
+  return item.get();
+}
+
+void ItemObject::apply() {
+  auto player = dynamic_cast<Player *>(GameStateObject::state->get_player());
+  auto [xp, yp] = player->get_pos();
+  if (abs(xp - x) + abs(yp - y) <= 1) {
+    auto map = state->get_current_map();
+    if (player->put_item(item))
+      map->remove_object(map->items, this);
+  }
+}

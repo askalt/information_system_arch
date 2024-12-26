@@ -1,6 +1,7 @@
-
 #pragma once
 #include "decision_tree.h"
+#include "inventory.h"
+#include "items.h"
 #include "state.h"
 
 struct Level {
@@ -19,7 +20,7 @@ struct Level {
   int lvl_exp;
 };
 
-struct Player : public GameStateObject, IGameState::IPlayer {
+struct Player : public GameStateObject, IGameState::IPlayer, Inventory {
   friend class GameState;
   Player(int x, int y, int health, int max_health);
 
@@ -44,11 +45,15 @@ struct Player : public GameStateObject, IGameState::IPlayer {
   int get_exp() const override;
 
   int get_lvl_exp() const override;
+  void set_hand(std::unique_ptr<Stick> _hand);
+
+  const Stick *get_hand();
 
  private:
   int health;
   int max_health;
   Level lvl{};
+  std::unique_ptr<Stick> hand;
 };
 
 struct Mob : public GameStateObject, IGameState::IMob {
@@ -70,6 +75,9 @@ struct Mob : public GameStateObject, IGameState::IMob {
   IGameState::ObjectDescriptor get_descriptor() const override;
 
  protected:
+  virtual void apply();
+
+ private:
   IGameState::ObjectDescriptor descriptor;
   int health;
   int max_health;
@@ -124,7 +132,7 @@ struct Enter : public GameStateObject, IGameState::IEnter {
 
   const Map* get_map() const;
 
-  void apply() const override;
+  void apply() override;
 
  private:
   std::string_view label;
@@ -149,7 +157,7 @@ struct Exit : public GameStateObject, IGameState::Object {
 
   IGameState::ObjectDescriptor get_descriptor() const override;
 
-  void apply() const override;
+  void apply() override;
 };
 
 // DecisionTreeMob executes decision tree to decide
@@ -205,4 +213,18 @@ struct BatDecideRun {
 
 struct BatDecideSleep {
   bool operator()(Bat&);
+};
+
+struct ItemObject : public GameStateObject, IGameState::Object {
+  friend class GameState;
+
+  ItemObject(std::unique_ptr<GameState::Item> item, int x, int y);
+
+  IGameState::ObjectDescriptor get_descriptor() const override;
+
+  const IGameState::Item *get_item() const;
+
+  std::unique_ptr<GameState::Item> item;
+
+  void apply() override;
 };
