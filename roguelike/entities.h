@@ -39,6 +39,8 @@ struct IGameState {
 
     virtual ~Object() {}
 
+    void set_pos(int xx, int yy);
+
    protected:
     int x, y;
   };
