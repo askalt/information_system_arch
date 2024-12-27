@@ -2,14 +2,15 @@ use std::io::{Read, Write};
 
 use env::Env;
 
+pub mod assign;
 pub mod cat;
 pub mod echo;
+pub mod env;
 pub mod exit;
+pub mod grep;
 pub mod proc;
 pub mod pwd;
 pub mod wc;
-pub mod assign;
-pub mod env;
 
 #[derive(Clone)]
 pub struct EnvAssign {
@@ -19,7 +20,10 @@ pub struct EnvAssign {
 
 impl EnvAssign {
     pub fn new(lvalue: Vec<u8>, rvalue: Vec<u8>) -> Self {
-        Self { lvalue: lvalue, rvalue: rvalue }
+        Self {
+            lvalue: lvalue,
+            rvalue: rvalue,
+        }
     }
 }
 

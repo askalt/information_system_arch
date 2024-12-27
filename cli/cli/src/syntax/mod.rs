@@ -1,8 +1,7 @@
 use std::collections::VecDeque;
 
 use crate::cmd::{
-    cat::CatCmd, echo::EchoCmd, env::Env, exit::ExitCmd, assign::AssignCmd, proc::ProcCmd, pwd::PwdCmd,
-    wc::WcCmd, Cmd, EnvAssign,
+    assign::AssignCmd, cat::CatCmd, echo::EchoCmd, env::Env, exit::ExitCmd, grep::GrepCmd, proc::ProcCmd, pwd::PwdCmd, wc::WcCmd, Cmd, EnvAssign
 };
 
 const SUB_SIGN: u8 = b'$';
@@ -356,6 +355,7 @@ impl<'a> Parser<'a> {
             b"exit" => Box::new(ExitCmd::new(args)),
             b"wc" => Box::new(WcCmd::new(args)),
             b"pwd" => Box::new(PwdCmd::new(args)),
+            b"grep" => Box::new(GrepCmd::new(args)),
             p => Box::new(ProcCmd::new(p.to_vec(), args, assigns.clone())),
         }
     }
