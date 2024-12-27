@@ -15,7 +15,7 @@ impl Cmd for ExitCmd {
         &mut self,
         _r: &mut dyn std::io::Read,
         w: &mut dyn std::io::Write,
-        env: &mut Env,
+        _env: &mut Env,
     ) -> anyhow::Result<()> {
         w.write(b"\n")?;
         process::exit(0);
