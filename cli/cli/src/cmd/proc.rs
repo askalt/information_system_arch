@@ -14,7 +14,11 @@ pub struct ProcCmd {
 
 impl ProcCmd {
     pub fn new(cmd_path: Vec<u8>, args: Vec<Vec<u8>>, assigns: Vec<EnvAssign>) -> Self {
-        Self { cmd_path, args, assigns: assigns }
+        Self {
+            cmd_path,
+            args,
+            assigns: assigns,
+        }
     }
 }
 
@@ -34,6 +38,7 @@ impl Cmd for ProcCmd {
             .args(str_args)
             .stdin(Stdio::inherit())
             .stdout(Stdio::piped())
+            .envs(env.with_assigns(self.assigns.clone()))
             .spawn()?;
         let out = cmd.stdout.as_mut().unwrap();
         let mut buf = vec![0_u8; 1024];
