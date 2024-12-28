@@ -69,6 +69,8 @@ void init_UI(int argc, char *argv[]) {
   resize_term(H, W);
 }
 
+void deinit_UI() { endwin(); }
+
 const std::unordered_map<IGameState::ObjectDescriptor, char>
     PART_DESCRIPTOR_CHAR = {
         {IGameState::ObjectDescriptor::PLAYER, 'p'},
@@ -179,6 +181,12 @@ struct GameUI {
   }
 
   Event next() {
+    if (state->is_win()) {
+      return SystemEvent{.type = SystemEventType::Win};
+    }
+    if (std::get<0>(state->get_player()->get_health()) == 0) {
+      return SystemEvent{.type = SystemEventType::Died};
+    }
     while (true) {
       flushinp();
       auto c = getch();
@@ -388,11 +396,10 @@ struct GameUI {
 
   void draw_help(int start_x) {
     move(start_x, 0);
-    printw("Help:\n");
-    printw("- Carriage:      ARROWS\n");
-    printw("- Pin carriage:  P\n");
-    printw("- Hero:          WASD\n");
-    printw("- Apply:         ENTER\n");
+    printw("[Carriage]: ARROWS.");
+    printw("  [Pin carriage]:  P.");
+    printw("  [Hero]:  WASD.");
+    printw("  [Apply]: ENTER.");
   }
 
   std::shared_ptr<const IGameState> state;
