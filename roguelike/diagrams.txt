@@ -1,0 +1,249 @@
+Диаграмма компонентов
+
+@startuml
+
+node "Console" {
+
+}
+
+node "App" {
+ IEngine  <.. [AppRunner] : sends commands
+ UI      <.. [AppRunner] : receive commands
+}
+
+node "GameUI" {
+  Drawer <.. [AppUI] : draws with
+  Input  <.. [AppUI] : gets user commands
+  IEngine <.. [AppUI] : gets entities to draw
+}
+
+node "GameEngine" {
+
+}
+
+[Console] --> [Drawer]     : implements
+[Console] --> [Input]      : implements
+[GameEngine]  --> [IEngine] : implements
+
+@enduml
+
+==========================================
+
+Диаграмма классов
+
+@startuml
+
+' game entities
+abstract class IGameUI
+
+abstract class IDrawer
+
+abstract class IObject {
+  + x int
+  + y int
+  + descriptor
+  + get_label()
+}
+
+abstract class Imap {
+  string get_name()
+}
+
+abstract class IExit
+
+abstract class ILvl
+
+abstract class IItem {
+  descriptor
+}
+
+abstract class IEnter {
+  string getTransition()
+}
+
+IObject <|-- IEnter
+
+abstract class IMob {
+  + health int
+  + max_health
+  ILvl get_level()
+  get_attack_area()
+}
+
+IObject <|-- IMob
+
+abstract class IInventory {
+   IItem* get_items()
+}
+
+
+IObject <|-- IInventory
+
+abstract class IPlayer {
+  + health int
+  + max_health
+  ILvl get_level()
+  get_attack_area()
+}
+
+IInventory <|-- IPlayer
+
+abstract class IEngine {
+  IMap get_objects()
+  apply(GameEvent)
+}
+
+' Appplcation
+
+class App {
+}
+
+App    --o IEngine  : sends game events
+App    --* IGameUI  : receives events, draws
+
+' Game UI
+
+class GameUI {
+  Event next()
+  draw()
+}
+
+IGameUI <|-- GameUI
+GameUI --* Carriage : controls carriage with
+GameUI --* IDrawer  : draws state with
+GameUI --o IEngine  : gets objects to draw
+
+' Events
+
+abstract class Event
+
+class SystemEvent
+
+Event <|-- SystemEvent
+
+class GameEvent
+
+Event <|-- GameEvent
+
+' Game engine
+
+class World {
+  save(path)
+  load(path)
+}
+
+class Engine {
+  + MapStack* maps_stack
+}
+
+Engine --o World
+
+class MapStackNode {
+  + int x
+  + int y
+  + Map *
+}
+
+IEngine <|-- Engine
+
+class EngineObject {
+  apply()
+  move()
+}
+
+class Level {
+ + int lvl
+ + int exp
+ + int lvl_exp
+}
+
+ILevel <|-- Level
+
+class Player {
+
+}
+
+Player --o Level
+
+IPlayer <|-- Player
+EngineObject <|-- Player
+
+class Mob {
+   + int radius
+   + dmg
+   + exp
+}
+
+EngineObject  <|-- Mob
+IMob          <|-- Mob
+
+class Wall
+
+IObject       <|-- Wall
+EngineObject  <|-- Wall
+
+class Chest
+
+EngineObject <|-- Chest
+IObject      <|-- Chest
+
+class Map
+
+IMap <|-- Map
+
+class Exit {
+   Map* map
+}
+
+IExit        <|-- Exit
+EngineObject <|-- Exit
+
+class DecisionTreeMob {
+   DecisionTree root
+}
+
+Mob <|-- DecisionTreeMob
+
+class Orc
+
+DecisionTreeMob <|-- Orc
+
+class Bat
+
+DecisionTreeMob <|-- Bat
+
+' DecisionTree
+
+abstract class DecisionTree {
+   decide()
+}
+
+
+@enduml
+
+==========================================
+
+Диаграмма последовательностей: пользователь атакует моба
+
+@startuml
+
+actor   Player
+entity  GameUI
+entity  App
+entity  Engine
+entity  Mob
+entity  PlayerImpl
+
+App    -> GameUI     : next()
+Player -> GameUI     : enter
+GameUI -> App        : event := applyEvent
+App    -> Engine     : apply(event)
+Engine -> Mob        : apply()
+Mob    -> Engine     : player := getPlayerImpl()
+Mob    -> PlayerImpl : dmg := get_damage()
+Mob    -> Mob        : damage(dmg)
+Mob    -> Engine     : ok
+Engine -> App        : ok
+App    -> GameUI     : draw
+
+@enduml
