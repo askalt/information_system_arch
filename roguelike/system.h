@@ -4,4 +4,12 @@
 // - game over
 // - save game
 // - etc.
-struct SystemEvent {};
+
+enum class SystemEventType {
+  Win,
+  Died,
+};
+
+struct SystemEvent {
+  SystemEventType type;
+};

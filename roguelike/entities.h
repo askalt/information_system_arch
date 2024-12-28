@@ -110,6 +110,8 @@ struct IGameState {
     EventType type;
   };
 
+  virtual bool is_win() const = 0;
+
   virtual IPlayer* get_player() const = 0;
 
   virtual const MapDescription get_map() const = 0;

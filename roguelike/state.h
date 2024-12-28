@@ -37,6 +37,8 @@ struct GameState : IGameState {
 
   void damage_player(int dmg);
 
+  bool is_win() const override;
+
  private:
   void player_move(const PlayerMoveEvent& event);
 
