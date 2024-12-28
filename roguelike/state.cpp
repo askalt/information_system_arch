@@ -44,6 +44,10 @@ void GameState::player_move(const PlayerMoveEvent& event) {
   }
 }
 
+const int MAX_LEVEL = 5;
+
+bool GameState::is_win() const { return world->player->get_lvl() == MAX_LEVEL; }
+
 void GameState::damage_player(int dmg) { world->player->damage(dmg); }
 
 const IGameState::MapDescription GameState::get_map() const {
