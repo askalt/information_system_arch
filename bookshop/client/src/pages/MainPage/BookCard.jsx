@@ -1,8 +1,10 @@
 import React from "react";
-import { Card, CardContent, CardMedia, Typography, Button } from "@mui/material";
+import { Box, Card, CardContent, Typography, Button } from "@mui/material";
 import { styled } from "@mui/system";
 import { BsCart2 } from "react-icons/bs";
-import { useCart } from "../CartPage/CartContext"
+import { useCart } from "../CartPage/CartContext";
+import { useNavigate } from 'react-router-dom';
+import PriceTypography from '../../components/PriceTypography'
 
 const StyledCard = styled(Card)(({ theme }) => ({
     maxWidth: 345,
@@ -14,17 +16,6 @@ const StyledCard = styled(Card)(({ theme }) => ({
     }
 }));
 
-const StyledCardMedia = styled(CardMedia)({
-    height: 400,
-    objectFit: "cover"
-});
-
-const PriceTypography = styled(Typography)({
-    fontWeight: 600,
-    color: "#2e7d32",
-    marginTop: "8px"
-});
-
 const AddToCartButton = styled(Button)(({ theme }) => ({
     marginTop: "16px",
     width: "100%",
@@ -34,39 +25,50 @@ const AddToCartButton = styled(Button)(({ theme }) => ({
     }
 }));
 
-const BookCard = ({ product }) => {
+const BookCard = ({ book }) => {
     const { addToCart } = useCart();
+    const navigate = useNavigate();
 
-    const handleAddToCart = () => {
-        addToCart(product);
+    const handleOpenBookPage = () => {
+        navigate(`/book/${book.id}`);
+    };
+
+    const handleAddToCart = (e) => {
+        e.stopPropagation();
+        addToCart(book);
     };
 
     return (
-        <StyledCard>
-            <StyledCardMedia
-                component="img"
-                image={product.image}
-                alt={product.name}
-                onError={(e) => {
-                    e.target.src = "https://images.unsplash.com/photo-1505740420928-5e560c06d30e";
-                }}
-            />
+        <StyledCard onClick={handleOpenBookPage}>
+            <Box sx={{ overflow: 'hidden', width: '100%', height: '400px', position: 'relative' }}>
+                <img
+                    src={book.image}
+                    alt={book.name}
+                    style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'contain',
+                        backgroundColor: '#f0f0f0',
+                    }}
+                />
+            </Box>
             <CardContent>
                 <Typography variant="h6" component="div" gutterBottom>
-                    {product.name}
+                    {book.name}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
-                    {product.author}
+                    {book.author}
                 </Typography>
                 <PriceTypography variant="h6">
-                    {product.price}₽
+                    {book.price}₽
                 </PriceTypography>
+
                 <AddToCartButton
                     variant="contained"
                     startIcon={<BsCart2 />}
                     onClick={handleAddToCart}
                 >
-                    Add to Cart
+                    Добавить в корзину
                 </AddToCartButton>
             </CardContent>
         </StyledCard>
