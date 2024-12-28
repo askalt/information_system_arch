@@ -3,6 +3,7 @@ import React from 'react';
 import { Grid, Typography, Divider, Button } from '@mui/material';
 import CartItem from './CartItem';
 import { useCart } from './CartContext';
+import PriceTypography from '../../components/PriceTypography'
 
 const BasketPage = () => {
     const { cartItems } = useCart();
@@ -11,8 +12,6 @@ const BasketPage = () => {
 
     return (
         <Box p={2}>
-            <Typography variant="h4" gutterBottom>Корзина</Typography>
-
             {cartItems.length === 0 ? (
                 <Typography variant="h6" color="textSecondary">Ваша корзина пуста</Typography>
             ) : (
@@ -28,7 +27,7 @@ const BasketPage = () => {
             <Divider sx={{ my: 2 }} />
 
             <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h6">Общая сумма: {total.toFixed(2)} ₽</Typography>
+                <PriceTypography variant="h6">Общая сумма: {total.toFixed(2)}₽</PriceTypography>
                 <Button variant="contained" color="primary">Оформить заказ</Button>
             </Box>
         </Box>

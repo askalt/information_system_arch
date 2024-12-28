@@ -1,64 +1,14 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
 import {
-    AppBar,
-    Toolbar,
-    Typography,
-    IconButton,
     Grid,
-    Badge,
     Container,
     ThemeProvider,
     createTheme,
+    CircularProgress,
     Box
 } from "@mui/material";
-import { FaShoppingCart, FaUserCircle } from "react-icons/fa";
 import BookCard from "./BookCard"
-import { Link } from 'react-router-dom';
-
-const products = [
-    {
-        id: 1,
-        name: "Оптимизирющие компиляторы",
-        image: "https://cdn.litres.ru/pub/c/cover_415/71185981.webp",
-        price: 299.99,
-        author: "Константин Владимиров"
-    },
-    {
-        id: 2,
-        name: "Олимпиадное программирование",
-        image: "https://cdn.litres.ru/pub/c/cover_415/44867813.webp",
-        price: 199.99,
-        author: "Антти Лааксонен"
-    },
-    {
-        id: 3,
-        name: "Граф Монте-Кристо. В 2 книгах. Книга 2",
-        image: "https://cdn.litres.ru/pub/c/cover_415/68341772.webp",
-        price: 1299.99,
-        author: "Александр Дюма"
-    },
-    {
-        id: 4,
-        name: "Витя Малеев в школе и дома",
-        image: "https://cdn.litres.ru/pub/c/cover_415/3140845.webp",
-        price: 149.99,
-        author: "Николай Носов"
-    },
-    {
-        id: 5,
-        name: "Баранкин, будь человеком!",
-        image: "https://cdn.litres.ru/pub/c/cover_415/146229.webp",
-        price: 499.99,
-        author: "Валерий Медведев"
-    },
-    {
-        id: 6,
-        name: "Убийство в «Восточном экспрессе»",
-        image: "https://cdn.litres.ru/pub/c/cover_415/18922333.webp",
-        price: 79.99,
-        author: "Кристи Агата"
-    }
-];
+//import { getBooks } from '../../mocks/bookService';
 
 const theme = createTheme({
     palette: {
@@ -72,45 +22,35 @@ const theme = createTheme({
 });
 
 const MainPage = () => {
-    const [cartItems, setCartItems] = useState(0);
+    const [loading, setLoading] = useState(false);
+    const [books, setBooks] = useState([]);
 
-    const handleAddToCart = () => {
-        setCartItems(prevItems => prevItems + 1);
-    };
-
-    const handleRemoveToCart = () => {
-        setCartItems(prevItems => prevItems - 1);
-    };
+    useEffect(() => {
+        setLoading(true);
+        fetch(`http://127.0.0.1:8000/getBooks`)
+            .then((response) => response.json())
+            .then((books) => {
+                setBooks(books);
+                setLoading(false);
+            });
+    }, []);
 
     return (
         <ThemeProvider theme={theme}>
             <Box sx={{ flexGrow: 1 }}>
-                <AppBar position="fixed">
-                    <Toolbar>
-                        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                            Bookshop
-                        </Typography>
-
-                        <Link to="/basket">
-                            <Badge badgeContent={cartItems} color="secondary">
-                                <FaShoppingCart size={26} />
-                            </Badge>
-                        </Link>
-
-                        <IconButton color="inherit" aria-label="profile">
-                            <FaUserCircle size={26} />
-                        </IconButton>
-                    </Toolbar>
-                </AppBar>
-                <Container maxWidth="lg" sx={{ mt: 10, mb: 4 }}>
-                    <Grid container spacing={4}>
-                        {products.map((product) => (
-                            <Grid item key={product.id} xs={12} sm={6} md={4}>
-                                <BookCard product={product} />
-                            </Grid>
-                        ))}
-                    </Grid>
-                </Container>
+                {loading ? (
+                    <CircularProgress sx={{ mt: 8 }} />
+                ) : (
+                    <Container maxWidth="lg" sx={{ mt: 10, mb: 4 }}>
+                        <Grid container spacing={4}>
+                            {books.map((book) => (
+                                <Grid item key={book.id} xs={12} sm={6} md={4}>
+                                    <BookCard book={book} />
+                                </Grid>
+                            ))}
+                        </Grid>
+                    </Container>
+                )}
             </Box>
         </ThemeProvider>
     );
