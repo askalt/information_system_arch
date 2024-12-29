@@ -1,12 +1,34 @@
 import { Box } from "@mui/material";
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Grid, Typography, Divider, Button } from '@mui/material';
 import CartItem from './CartItem';
 import { useCart } from './CartContext';
 import PriceTypography from '../../components/PriceTypography'
+import { useAuth } from '../../contexts/AuthContext';
+import authFetch from '../../AuthFetch';
+import { jwtDecode } from 'jwt-decode';
 
 const BasketPage = () => {
-    const { cartItems } = useCart();
+    const { cartItems, setCartItems } = useCart();
+    const { token, saveToken } = useAuth();
+    const [userId, setUserId] = useState(null);
+
+    useEffect(() => {
+        if (token)
+            setUserId(jwtDecode(token).user_id);
+    }, [token]);
+
+    useEffect(() => {
+        authFetch(`http://127.0.0.1:8000/cart/${userId}/`, {}, token, saveToken)
+            .then((response) => response.json())
+            .then((items) => {
+                console.log(items);
+                setCartItems(items);
+            })
+            .catch((error) => {
+                alert(error);
+            });
+    }, [userId]);
 
     const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 

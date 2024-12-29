@@ -215,18 +215,25 @@ async def submit_review(book_id: int, review: Review, user_id: int = Depends(ver
     review_id += 1
     return review
 
-'''
-@app.post("/token", response_model=Token)
-async def login_for_access_token(
-    email: str = Form(...), 
-    password: str = Form(...)
-):
-    user = user_db.get(email)
-    if not user or not verify_password(password, user["password"]):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
-    access_token = create_access_token(data={"user_id": user["id"]})
-    return {"access_token": access_token, "token_type": "bearer"}
-'''
+@app.post("/removeReview/{review_id}", response_model=Review)
+async def remove_review(review_id: int, user_id: int = Depends(verify_token)):
+    review_to_delete = None
+    for book_reviews in reviews_db.values():
+        for review in book_reviews:
+            if review["id"] == review_id:
+                review_to_delete = review
+                break
+        if review_to_delete:
+            break
+    if review_to_delete is None:
+        raise HTTPException(status_code=404, detail="Review not found")
+    if review_to_delete["userId"] != user_id:
+        raise HTTPException(status_code=403, detail="You are not authorized to delete this review")
+    for book_reviews in reviews_db.values():
+        if review_to_delete in book_reviews:
+            book_reviews.remove(review_to_delete)
+            break
+    return review_to_delete
 
 @app.post("/token")
 async def login_for_access_token(
@@ -235,14 +242,13 @@ async def login_for_access_token(
 ):
     user = user_db.get(email)
     if not user or not verify_password(password, user["password"]):
-            raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Incorrect email or password")
 
     access_token = create_access_token(data={"user_id": user["id"]})
     refresh_token = create_refresh_token(data={"user_id": user["id"]})
 
     response = JSONResponse(content={"access_token": access_token, "refresh_token": refresh_token})
     #response.set_cookie(key="refresh_token", value=refresh_token, httponly=True, secure=True)
-    
     return response
 
 @app.post("/refresh", response_model=Token)
@@ -281,3 +287,82 @@ async def register(user: UserInDB):
     user_id += 1
     return {"message": "User registered successfully"}
 
+
+class CartItem(BaseModel):
+    book_id: int
+    quantity: int = None
+
+cart_db: Dict[int, List[CartItem]] = {}
+
+@app.get("/cart/{user_id}", response_model=List[CartItem])
+async def get_cart(user_id: int = Depends(verify_token)):
+    if user_id not in user_info_db:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
+    if user_id not in cart_db:
+        raise HTTPException(status_code=404, detail="Cart not found")
+    return cart_db[user_id]
+
+@app.post("/cart/{user_id}/add", response_model=CartItem)
+async def add_to_cart(cart_item: CartItem, user_id: int = Depends(verify_token)):
+    if user_id not in user_info_db:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
+    if user_id not in cart_db:
+        cart_db[user_id] = []
+
+    for item in cart_db[user_id]:
+        if item.book_id == cart_item.book_id:
+            item.quantity += 1
+            return item
+
+    new_item = CartItem(book_id=cart_item.book_id, quantity=1)
+    cart_db[user_id].append(new_item)
+    return new_item
+
+@app.delete("/cart/{book_id}/remove", response_model=CartItem)
+async def remove_from_cart(book_id: int, user_id: int = Depends(verify_token)):
+    if user_id not in user_info_db:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
+    if user_id not in cart_db:
+        raise HTTPException(status_code=404, detail="Cart not found")
+    
+    cart_items = cart_db[user_id]
+    for item in cart_items:
+        if item.book_id == book_id:
+            cart_items.remove(item)
+            return item
+    
+    raise HTTPException(status_code=404, detail="Book not found in cart")
+
+@app.put("/cart/{book_id}/increase", response_model=CartItem)
+async def decrease_quantity(book_id: int, user_id: int = Depends(verify_token)):
+    if user_id not in user_info_db:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
+    if user_id not in cart_db:
+        raise HTTPException(status_code=404, detail="Cart not found")
+
+    cart_items = cart_db[user_id]
+    for item in cart_items:
+        if item.book_id == book_id:
+            item.quantity += 1
+            return item
+    
+    raise HTTPException(status_code=404, detail="Book not found in cart")
+
+@app.put("/cart/{book_id}/decrease", response_model=CartItem)
+async def decrease_quantity(book_id: int, user_id: int = Depends(verify_token)):
+    if user_id not in user_info_db:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Unknown user")
+    if user_id not in cart_db:
+        raise HTTPException(status_code=404, detail="Cart not found")
+
+    cart_items = cart_db[user_id]
+    for item in cart_items:
+        if item.book_id == book_id:
+            if item.quantity > 1:
+                item.quantity -= 1
+                return item
+            else:
+                cart_items.remove(item)
+                return item
+    
+    raise HTTPException(status_code=404, detail="Book not found in cart")

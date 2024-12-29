@@ -1,10 +1,13 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Card, CardContent, Typography, Button } from "@mui/material";
 import { styled } from "@mui/system";
 import { BsCart2 } from "react-icons/bs";
 import { useCart } from "../CartPage/CartContext";
 import { useNavigate } from 'react-router-dom';
 import PriceTypography from '../../components/PriceTypography'
+import { useAuth } from '../../contexts/AuthContext';
+import authFetch from '../../AuthFetch';
+import { jwtDecode } from 'jwt-decode';
 
 const StyledCard = styled(Card)(({ theme }) => ({
     maxWidth: 345,
@@ -27,7 +30,14 @@ const AddToCartButton = styled(Button)(({ theme }) => ({
 
 const BookCard = ({ book }) => {
     const { addToCart } = useCart();
+    const { token, saveToken } = useAuth();
+    const [userId, setUserId] = useState(null);
     const navigate = useNavigate();
+
+    useEffect(() => {
+        if (token)
+            setUserId(jwtDecode(token).user_id);
+    }, [token]);
 
     const handleOpenBookPage = () => {
         navigate(`/book/${book.id}`);
@@ -35,7 +45,23 @@ const BookCard = ({ book }) => {
 
     const handleAddToCart = (e) => {
         e.stopPropagation();
-        addToCart(book);
+        if (book && userId) {
+            authFetch(`http://127.0.0.1:8000/cart/${userId}/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ book_id: book.id }),
+            }, token, saveToken)
+                .then((response) => response.json())
+                .then((cartItem) => {
+                    console.log(cartItem);
+                    addToCart(book);
+                })
+                .catch((error) => {
+                    alert(error);
+                });
+        }
     };
 
     return (
