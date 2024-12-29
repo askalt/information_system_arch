@@ -1,9 +1,19 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Avatar, Typography, Rating } from '@mui/material';
+import { Box, Avatar, Typography, Rating, IconButton } from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { jwtDecode } from 'jwt-decode';
+import { useAuth } from '../../contexts/AuthContext'
 //import { getUser } from '../../mocks/userService';
 
-const Review = ({ review }) => {
+const Review = ({ review, onDelete }) => {
+    const { token } = useAuth();
     const [user, setUser] = useState(null);
+    const [userId, setUserId] = useState(null);
+
+    useEffect(() => {
+        setUserId(jwtDecode(token).user_id);
+    }, [token]);
+
     useEffect(() => {
         fetch(`http://127.0.0.1:8000/getUser/${review.userId}`)
             .then((response) => response.json())
@@ -13,7 +23,6 @@ const Review = ({ review }) => {
     }, [review.userId]);
 
     let user_image = user ? user.image : "";
-    console.log(user_image);
     let user_name = user ? user.name : "";
 
     return (
@@ -32,6 +41,24 @@ const Review = ({ review }) => {
             }}>
                 <Rating value={review.rating} readOnly />
             </Box>
+            {token && userId == review.userId && (
+                <Box
+                    sx={{
+                        position: 'absolute',
+                        bottom: 10,
+                        right: 10,
+                        zIndex: 2,
+                    }}
+                >
+                    <IconButton
+                        color="error"
+                        onClick={() => onDelete(review.id)}
+                        aria-label="delete"
+                    >
+                        <DeleteIcon />
+                    </IconButton>
+                </Box>
+            )}
         </Box>
     );
 };

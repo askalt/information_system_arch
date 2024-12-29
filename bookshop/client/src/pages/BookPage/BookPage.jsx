@@ -20,8 +20,14 @@ const BookPage = () => {
     const { addToCart } = useCart();
     const [user, setUser] = React.useState({});
     const { token, saveToken } = useAuth();
+    const [userId, setUserId] = useState(null);
 
-    React.useEffect(() => {
+    useEffect(() => {
+        if (token)
+            setUserId(jwtDecode(token).user_id);
+    }, [token]);
+
+    useEffect(() => {
         if (token) {
             const decoded = jwtDecode(token);
             fetch(`http://127.0.0.1:8000/getUser/${decoded.user_id}`)
@@ -32,12 +38,6 @@ const BookPage = () => {
         }
     }, [token]);
 
-    const currentUser = {
-        id: 1,
-        name: 'Astronomax',
-        image: "https://i.namu.wiki/i/X1NSMaWzWMiLwz7lTOfl65kbteTqO7DXAVscpSlU3FD0yRv35Jj2UYxdUJnfIz6TfDoRPwFfuGPp5LDCowwjxQ.webp",
-    };
-
     useEffect(() => {
         setLoading(true);
         const requests = [
@@ -47,7 +47,6 @@ const BookPage = () => {
                 .then((response) => response.json()),
         ];
         Promise.all(requests).then(([book, reviews]) => {
-            console.log(book, reviews)
             setBook(book);
             setReviews(reviews);
         }).finally(() => {
@@ -57,7 +56,21 @@ const BookPage = () => {
 
     const handleAddToCart = () => {
         if (book) {
-            addToCart(book);
+            authFetch(`http://127.0.0.1:8000/cart/${id}/add`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ book_id: book.id }),
+            }, token, saveToken)
+                .then((response) => response.json())
+                .then((cartItem) => {
+                    console.log(cartItem);
+                    addToCart(book);
+                })
+                .catch((error) => {
+                    alert(error);
+                });
         }
     };
 
@@ -66,17 +79,8 @@ const BookPage = () => {
             const review = {
                 rating: reviewRating,
                 text: reviewText,
-                userId: currentUser.id,
+                userId: userId,
             };
-            /*fetch(`http://127.0.0.1:8000/submitReview/${id}`, {
-                method: 'POST',
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(review),
-            })*/
-            console.log(saveToken);
             authFetch(`http://127.0.0.1:8000/submitReview/${id}`, {
                 method: 'POST',
                 headers: {
@@ -97,6 +101,22 @@ const BookPage = () => {
         } else {
             alert('Пожалуйста, оставьте отзыв и поставьте оценку');
         }
+    };
+
+    const handleDeleteReview = (review_id) => {
+        authFetch(`http://127.0.0.1:8000/removeReview/${review_id}`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+        }, token, saveToken)
+            .then((response) => response.json())
+            .then((review) => {
+                setReviews((reviews) => reviews.filter(review => review.id != review_id));
+            })
+            .catch((error) => {
+                alert(error);
+            });
     };
 
     return (
@@ -138,7 +158,7 @@ const BookPage = () => {
                         }}>
                             <Typography variant="body1" gutterBottom>Отзывы о книге:</Typography>
                             {reviews.map((review) => (
-                                <Review key={review.id} review={review} />
+                                <Review key={review.id} review={review} onDelete={handleDeleteReview} />
                             ))}
                         </Box>
                     </Box>
