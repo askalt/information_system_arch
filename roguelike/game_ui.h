@@ -23,7 +23,7 @@ const int W = 200;
 const int H = 200;
 
 /* Game field sizes. */
-const int W_FIELD = 70;
+const int W_FIELD = 140;
 const int H_FIELD = 40;
 
 /* Add it to color pair argument [1;6] to use different backrground. */

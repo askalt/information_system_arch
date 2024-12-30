@@ -29,7 +29,7 @@ struct GameState : IGameState {
 
   GameState(std::unique_ptr<World> world);
   const MapDescription get_map() const override;
-
+  void map_init(Map *map);
   IGameState::IPlayer* get_player() const override;
 
   void apply_event(const Event& event) override;

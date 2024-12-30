@@ -1,6 +1,7 @@
 #pragma once
 #include <algorithm>
 #include <filesystem>
+#include <utility>
 #include <vector>
 #include <set>
 
@@ -8,17 +9,28 @@
 #include "panic.h"
 #include "state.h"
 
+struct edge {
+    int dst;
+    std::vector<int> intersections;
+};
+
 struct plan_node {
     plan_node() = default;
 
     plan_node(int x, int y) : x(x), y(y) {
-      edges[0][0] = edges[0][1] = edges[1][0] = edges[1][1] = -1;
+      edges[0][0].dst = edges[0][1].dst =
+        edges[1][0].dst = edges[1][1].dst = -1;
     }
     int x{}, y{};
-    int edges[2][2]{};
+    edge edges[2][2]{};
 };
 
-using plan = std::vector<plan_node>;
+struct plan {
+    plan(int n, std::vector<plan_node> nodes) : n(n), nodes(std::move(nodes)) {}
+
+    int n;
+    std::vector<plan_node> nodes;
+};
 
 struct Map {
   friend class GameState;
@@ -69,7 +81,7 @@ struct Map {
   std::vector<std::unique_ptr<Mob>> mobs;
   std::vector<std::unique_ptr<ItemObject>> items;
 
-  std::unique_ptr<Exit> exit;
+  std::unique_ptr<Exit> exit = nullptr;
   std::string name;
 
   /* All objects that map contains. */
@@ -94,12 +106,13 @@ struct World {
 
   World(const std::filesystem::path& dir);
 
-  friend std::unique_ptr<World> gen_world(int n);
+  //friend std::unique_ptr<World> gen_world(int n);
 
- private:
-  std::vector<std::unique_ptr<Map>> maps;
-  std::unique_ptr<Player> player;
-  Map* start_map;
+  private:
+    const std::filesystem::path dir;
+    std::vector<std::unique_ptr<Map>> maps;
+    std::unique_ptr<Player> player;
+    Map* start_map;
 };
 
-std::unique_ptr<World> gen_world(int n);
+std::unique_ptr<Map> gen_map(int n);
