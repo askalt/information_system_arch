@@ -45,22 +45,26 @@ const BookCard = ({ book }) => {
 
     const handleAddToCart = (e) => {
         e.stopPropagation();
-        if (book && userId) {
-            authFetch(`http://127.0.0.1:8000/cart/${userId}/add`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ book_id: book.id }),
-            }, token, saveToken)
-                .then((response) => response.json())
-                .then((cartItem) => {
-                    console.log(cartItem);
-                    addToCart(book);
-                })
-                .catch((error) => {
-                    alert(error);
-                });
+        if (token) {
+            if (book && userId) {
+                authFetch(`http://127.0.0.1:8000/cart/${userId}/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ book_id: book.id }),
+                }, token, saveToken)
+                    .then((response) => response.json())
+                    .then((cartItem) => {
+                        console.log(cartItem);
+                        addToCart(book);
+                    })
+                    .catch((error) => {
+                        alert(error);
+                    });
+            }
+        } else {
+            navigate('/login');
         }
     };
 

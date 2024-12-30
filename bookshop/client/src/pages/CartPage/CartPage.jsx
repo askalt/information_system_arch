@@ -19,18 +19,20 @@ const BasketPage = () => {
     }, [token]);
 
     useEffect(() => {
-        authFetch(`http://127.0.0.1:8000/cart/${userId}/`, {}, token, saveToken)
-            .then((response) => response.json())
-            .then((items) => {
-                console.log(items);
-                setCartItems(items);
-            })
-            .catch((error) => {
-                alert(error);
-            });
+        if (token) {
+            authFetch(`http://127.0.0.1:8000/cart/${userId}/`, {}, token, saveToken)
+                .then((response) => response.json())
+                .then((items) => {
+                    console.log(items);
+                    setCartItems(items);
+                })
+                .catch((error) => {
+                    alert(error);
+                });
+        }
     }, [userId]);
 
-    const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
+    //const total = cartItems.reduce((acc, item) => acc + item.price * item.quantity, 0);
 
     return (
         <Box p={2}>
@@ -47,11 +49,11 @@ const BasketPage = () => {
             )}
 
             <Divider sx={{ my: 2 }} />
-
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-                <PriceTypography variant="h6">Общая сумма: {total.toFixed(2)}₽</PriceTypography>
-                <Button variant="contained" color="primary">Оформить заказ</Button>
-            </Box>
+            {token ? (
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    {/*<PriceTypography variant="h6">Общая сумма: {total.toFixed(2)}₽</PriceTypography>*/}
+                    <Button variant="contained" color="primary">Оформить заказ</Button>
+                </Box>) : (<Box> Авторизуйтесь и добавляйте книги в корзину </Box>)}
         </Box>
     );
 };
