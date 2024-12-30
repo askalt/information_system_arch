@@ -16,6 +16,10 @@ bool IGameState::Object::on_same_pos(const IGameState::Object* other) const {
 
 IGameState::Object::Object(int x, int y) : x{x}, y{y} {}
 
+std::optional<int> IGameState::Object::get_damage() const {
+  return std::nullopt;
+}
+
 void IGameState::Object::set_pos(int xx, int yy) {
   x = xx;
   y = yy;
@@ -33,7 +37,7 @@ IGameState::Event::Event(NoOpEvent event)
 IGameState::Event::Event(ApplyObjectEvent event)
     : apply_object(std::move(event)), type(EventType::Apply) {}
 IGameState::Event::Event(ApplyItemEvent event)
-  : apply_item(std::move(event)), type(EventType::ApplyItem) {}
+    : apply_item(std::move(event)), type(EventType::ApplyItem) {}
 
 /* IEnter impl. */
 IGameState::IEnter::IEnter(int x, int y, std::string transition)
@@ -71,5 +75,9 @@ IGameState::IPlayer::IPlayer(int x, int y) : IGameState::IHealthable{x, y} {}
 /* IMob impl. */
 IGameState::IMob::IMob(int x, int y) : IGameState::IHealthable{x, y} {}
 
-IGameState::ItemDescriptor IGameState::Item::get_descriptor() const { return descriptor; }
+IGameState::ItemDescriptor IGameState::Item::get_descriptor() const {
+  return descriptor;
+}
 
+/* Item impl. */
+std::optional<int> IGameState::Item::get_damage() const { return std::nullopt; }

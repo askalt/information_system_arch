@@ -99,7 +99,7 @@ struct AttackNode : DecisionTreeNode {
   AttackNode(T &obj) : obj(obj){};
 
   std::shared_ptr<DecisionTreeNode> decide() const override {
-    int dmg = obj.get_damage();
+    int dmg = obj.internal_get_damage();
     obj.get_state()->damage_player(dmg);
     return nullptr;
   }

@@ -37,6 +37,8 @@ struct IGameState {
     // Get optional label, e.g. wall may be labeled as "dungeon".
     virtual std::optional<std::string_view> get_label() const;
 
+    virtual std::optional<int> get_damage() const;
+
     virtual ~Object() = default;
 
     void set_pos(int xx, int yy);
@@ -46,21 +48,23 @@ struct IGameState {
   };
 
   enum class ItemDescriptor {
-      STICK,
-      SALVE,
-      ItemDescriptorMAX,
+    STICK,
+    SALVE,
+    ItemDescriptorMAX,
   };
 
   struct Item {
-      Item(ItemDescriptor descriptor) : descriptor{descriptor} {}
-      virtual void apply(Object *object) const = 0;
+    Item(ItemDescriptor descriptor) : descriptor{descriptor} {}
+    virtual void apply(Object* object) const = 0;
 
-      ItemDescriptor get_descriptor() const;
+    virtual std::optional<int> get_damage() const;
 
-      virtual ~Item() = default;
+    ItemDescriptor get_descriptor() const;
 
-  protected:
-      IGameState::ItemDescriptor descriptor;
+    virtual ~Item() = default;
+
+   protected:
+    IGameState::ItemDescriptor descriptor;
   };
 
   struct MapDescription {
@@ -106,8 +110,8 @@ struct IGameState {
   struct NoOpEvent {};
 
   struct ApplyObjectEvent {
-      // Object to apply.
-      Object *object;
+    // Object to apply.
+    Object* object;
   };
 
   struct ApplyItemEvent {

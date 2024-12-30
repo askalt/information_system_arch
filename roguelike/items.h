@@ -21,6 +21,8 @@ struct Stick : public GameStateObject, IGameState::Item {
 
     void apply(IGameState::Object *object) const override;
 
+    std::optional<int> get_damage() const override;
+
     int damage;
     int radius;
 };

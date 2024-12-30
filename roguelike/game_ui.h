@@ -10,8 +10,8 @@
 
 #include "curses.h"
 #include "event.h"
-#include "panic.h"
 #include "objects.h"
+#include "panic.h"
 
 #define safe_call(f) \
   if (f() == ERR) {  \
@@ -72,39 +72,43 @@ void init_UI(int argc, char *argv[]) {
 
 void deinit_UI() { endwin(); }
 
-#define CHAR_MAP_MEMBER(s, v, ...) {s, v}
-#define INFO_MAP_MEMBER(s, _, v, ...) {s, v}
-#define MAP_INIT_LIST(map_members, accessor) { map_members(accessor) }
+#define CHAR_MAP_MEMBER(s, v, ...) \
+  { s, v }
+#define INFO_MAP_MEMBER(s, _, v, ...) \
+  { s, v }
+#define MAP_INIT_LIST(map_members, accessor) \
+  { map_members(accessor) }
 
-#define OBJECT_DESCRIPTOR_LIST(_) \
-  _(IGameState::ObjectDescriptor::PLAYER, 'p', "player"),\
-  _(IGameState::ObjectDescriptor::WALL, '*', "wall"),\
-  _(IGameState::ObjectDescriptor::CHEST, '@', "chest"),\
-  _(IGameState::ObjectDescriptor::STONE, '#', "stone"),\
-  _(IGameState::ObjectDescriptor::ENTER, '\0', "enter"),\
-  _(IGameState::ObjectDescriptor::HORIZONTAL_BORDER, '-', "nil"),\
-  _(IGameState::ObjectDescriptor::VERTICAL_BORDER, '|', "nil"),\
-  _(IGameState::ObjectDescriptor::CORNER, '+', "nil"),\
-  _(IGameState::ObjectDescriptor::EXIT, '%', "exit"),\
-  _(IGameState::ObjectDescriptor::ORC, 'O', "orc"),\
-  _(IGameState::ObjectDescriptor::BAT, 'B', "bat"),\
-
+#define OBJECT_DESCRIPTOR_LIST(_)                                     \
+  _(IGameState::ObjectDescriptor::PLAYER, 'p', "player"),             \
+      _(IGameState::ObjectDescriptor::WALL, '*', "wall"),             \
+      _(IGameState::ObjectDescriptor::CHEST, '@', "chest"),           \
+      _(IGameState::ObjectDescriptor::STONE, '#', "stone"),           \
+      _(IGameState::ObjectDescriptor::ENTER, '\0', "enter"),          \
+      _(IGameState::ObjectDescriptor::HORIZONTAL_BORDER, '-', "nil"), \
+      _(IGameState::ObjectDescriptor::VERTICAL_BORDER, '|', "nil"),   \
+      _(IGameState::ObjectDescriptor::CORNER, '+', "nil"),            \
+      _(IGameState::ObjectDescriptor::EXIT, '%', "exit"),             \
+      _(IGameState::ObjectDescriptor::ORC, 'O', "orc"),               \
+      _(IGameState::ObjectDescriptor::BAT, 'B', "bat"),
 
 const std::unordered_map<IGameState::ObjectDescriptor, char>
-  OBJECT_DESCRIPTOR_CHAR = MAP_INIT_LIST(OBJECT_DESCRIPTOR_LIST, CHAR_MAP_MEMBER);
+    OBJECT_DESCRIPTOR_CHAR =
+        MAP_INIT_LIST(OBJECT_DESCRIPTOR_LIST, CHAR_MAP_MEMBER);
 
 const std::unordered_map<IGameState::ObjectDescriptor, std::string>
-  OBJECT_DESCRIPTOR_INFO = MAP_INIT_LIST(OBJECT_DESCRIPTOR_LIST, INFO_MAP_MEMBER);
+    OBJECT_DESCRIPTOR_INFO =
+        MAP_INIT_LIST(OBJECT_DESCRIPTOR_LIST, INFO_MAP_MEMBER);
 
-#define ITEM_DESCRIPTOR_LIST(_) \
-  _(IGameState::ItemDescriptor::SALVE, '&', "salve"),\
-  _(IGameState::ItemDescriptor::STICK, '/', "stick"),\
+#define ITEM_DESCRIPTOR_LIST(_)                       \
+  _(IGameState::ItemDescriptor::SALVE, '&', "salve"), \
+      _(IGameState::ItemDescriptor::STICK, '/', "stick"),
 
 const std::unordered_map<IGameState::ItemDescriptor, char>
-  ITEM_DESCRIPTOR_CHAR = MAP_INIT_LIST(ITEM_DESCRIPTOR_LIST, CHAR_MAP_MEMBER);
+    ITEM_DESCRIPTOR_CHAR = MAP_INIT_LIST(ITEM_DESCRIPTOR_LIST, CHAR_MAP_MEMBER);
 
 const std::unordered_map<IGameState::ItemDescriptor, std::string>
-  ITEM_DESCRIPTOR_INFO = MAP_INIT_LIST(ITEM_DESCRIPTOR_LIST, INFO_MAP_MEMBER);
+    ITEM_DESCRIPTOR_INFO = MAP_INIT_LIST(ITEM_DESCRIPTOR_LIST, INFO_MAP_MEMBER);
 
 int rem(int a, int mod) {
   if (a > 0) {
@@ -122,9 +126,17 @@ std::pair<int, int> get_bounds(int x, int width) {
   return {-(div + 1) * width, -div * width};
 }
 
-std::string make_item_info(IGameState::Item *item) {
-  (void)item;
-  return "item";
+std::string make_item_info(const IGameState::Item *item) {
+  if (item == nullptr) {
+    return "nil";
+  }
+  std::stringstream ss;
+  ss << "item {";
+  if (auto dmg = item->get_damage(); dmg.has_value()) {
+    ss << " damage = " << dmg.value();
+  }
+  ss << " }";
+  return ss.str();
 }
 
 std::string make_object_info(IGameState::Object *object) {
@@ -167,9 +179,9 @@ struct GameUI {
 
   void draw() {
     safe_call(erase);
-    previous_object =
-      ((under_carriage.type == UnderCarriage::Type::OBJECT) ?
-       under_carriage.object : nullptr);
+    previous_object = ((under_carriage.type == UnderCarriage::Type::OBJECT)
+                           ? under_carriage.object
+                           : nullptr);
     under_carriage.type = UnderCarriage::Type::NONE;
     int header_end_x = draw_header();
     /* Leave place for current object description. */
@@ -232,11 +244,11 @@ struct GameUI {
           switch (under_carriage.type) {
             case UnderCarriage::Type::ITEM:
               return {GameState::ApplyItemEvent{
-                .pos = under_carriage.item_pos,
+                  .pos = under_carriage.item_pos,
               }};
             case UnderCarriage::Type::OBJECT:
               return {GameState::ApplyObjectEvent{
-                .object = under_carriage.object,
+                  .object = under_carriage.object,
               }};
             default:
               break;
@@ -249,8 +261,6 @@ struct GameUI {
   }
 
  private:
-
-
   // Draws header, returns x where finished.
   int draw_header() {
     move(0, 0);
@@ -263,8 +273,8 @@ struct GameUI {
     draw_healthbar(health, max_health);
     printw("Level:  %d\n", player->get_lvl());
     printw("Exp:    (%d/%d)\n", player->get_exp(), player->get_lvl_exp());
-    printw("Items:  []\n");
-    printw("Stash:  []\n");
+    // printw("Items:  []\n");
+    // printw("Stash:  []\n");
     draw_hand(player->get_hand());
     auto as_inventory = dynamic_cast<Inventory *>(player);
     draw_inventory(*as_inventory);
@@ -280,6 +290,8 @@ struct GameUI {
       auto player = dynamic_cast<Player *>(state->get_player());
       auto item = player->get_stash()[under_carriage.item_pos].get();
       printw("%s\n", make_item_info(item).data());
+    } else if (under_carriage.type == UnderCarriage::Type::HAND_ITEM) {
+      printw("%s\n", make_item_info(under_carriage.hand_item).data());
     }
     printw("\n");
   }
@@ -304,14 +316,21 @@ struct GameUI {
       assert(it != ITEM_DESCRIPTOR_CHAR.end());
       c = it->second;
     }
-    printw("Hand:  %c\n", c);
+    printw("Hand:  ");
+    int y, x;
+    getyx(stdscr, y, x);
+    if (carriage_x == y && carriage_y == x) {
+      under_carriage.type = UnderCarriage::Type::HAND_ITEM;
+      under_carriage.hand_item = static_cast<const IGameState::Item *>(hand);
+    }
+    printw("%c\n", c);
   }
 
   void draw_inventory(const Inventory &inventory) {
     printw("Stash:  [");
     auto &stash = inventory.get_stash();
-    //int y, x;
-    //getyx(stdscr, y, x);
+    // int y, x;
+    // getyx(stdscr, y, x);
     for (int i = 0; i < stash.size(); i++) {
       int y, x;
       getyx(stdscr, y, x);
@@ -326,8 +345,8 @@ struct GameUI {
         under_carriage.item_pos = i;
       }
     }
-    int empty_cells = inventory.get_max_stash_size() -
-      (int)inventory.get_stash().size();
+    int empty_cells =
+        inventory.get_max_stash_size() - (int)inventory.get_stash().size();
     printw("%s", std::string(empty_cells, '_').c_str());
     printw("]\n");
   }
@@ -372,11 +391,11 @@ struct GameUI {
     }
     previous_location = map.name;
 
-    //auto previous_object =
-    //    ((under_carriage.type == UnderCarriage::Type::OBJECT) ?
-    //    under_carriage.object : nullptr);
-    //under_carriage.type = UnderCarriage::Type::NONE;
-    //under_carriage.object = nullptr;
+    // auto previous_object =
+    //     ((under_carriage.type == UnderCarriage::Type::OBJECT) ?
+    //     under_carriage.object : nullptr);
+    // under_carriage.type = UnderCarriage::Type::NONE;
+    // under_carriage.object = nullptr;
     for (const auto &object : map.objects) {
       auto [x, y] = object->get_pos();
       /* Check that object is contained in a visual field. */
@@ -406,14 +425,15 @@ struct GameUI {
     int attack_field_color_pair_shift = 0;
     std::set<std::pair<int, int>> attack_area;
     if (under_carriage.type == UnderCarriage::Type::OBJECT) {
-        if (under_carriage.object == static_cast<IGameState::Object *>(player)) {
-            attack_area = player->get_attack_area();
-            attack_field_color_pair_shift = BLUE_SHIFT;
-        } else if (auto mob = dynamic_cast<IGameState::IMob *>(under_carriage.object);
-            mob != nullptr) {
-            attack_area = mob->get_attack_area();
-            attack_field_color_pair_shift = RED_SHIFT;
-        }
+      if (under_carriage.object == static_cast<IGameState::Object *>(player)) {
+        attack_area = player->get_attack_area();
+        attack_field_color_pair_shift = BLUE_SHIFT;
+      } else if (auto mob =
+                     dynamic_cast<IGameState::IMob *>(under_carriage.object);
+                 mob != nullptr) {
+        attack_area = mob->get_attack_area();
+        attack_field_color_pair_shift = RED_SHIFT;
+      }
     }
 
     for (const auto &object : map.objects) {
@@ -485,16 +505,18 @@ struct GameUI {
   std::string_view previous_location;
 
   struct UnderCarriage {
-      enum class Type {
-          NONE,
-          ITEM,
-          OBJECT,
-      };
-      Type type;
-      union {
-          int item_pos;
-          IGameState::Object *object;
-      };
+    enum class Type {
+      NONE,
+      ITEM,
+      OBJECT,
+      HAND_ITEM,
+    };
+    Type type;
+    union {
+      int item_pos;
+      const IGameState::Item *hand_item;
+      IGameState::Object *object;
+    };
   } under_carriage;
 
   IGameState::Object *previous_object;

@@ -47,7 +47,7 @@ struct Player : public GameStateObject, IGameState::IPlayer, Inventory {
   int get_lvl_exp() const override;
   void set_hand(std::unique_ptr<Stick> _hand);
 
-  const Stick *get_hand();
+  const Stick* get_hand();
 
  private:
   int health;
@@ -64,7 +64,7 @@ struct Mob : public GameStateObject, IGameState::IMob {
 
   void damage(int x);
 
-  int get_damage() const;
+  int internal_get_damage() const;
 
   virtual void move() = 0;
 
@@ -222,7 +222,9 @@ struct ItemObject : public GameStateObject, IGameState::Object {
 
   IGameState::ObjectDescriptor get_descriptor() const override;
 
-  const IGameState::Item *get_item() const;
+  const IGameState::Item* get_item() const;
+
+  std::optional<int> get_damage() const override;
 
   std::unique_ptr<GameState::Item> item;
 
