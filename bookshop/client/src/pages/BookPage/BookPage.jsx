@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { Avatar, Button, Typography, Box, Container, TextField, Rating, CircularProgress } from '@mui/material';
 import { useCart } from '../CartPage/CartContext';
 //import { getReviews, submitReview } from '../../mocks/reviewService';
@@ -21,10 +21,13 @@ const BookPage = () => {
     const [user, setUser] = React.useState({});
     const { token, saveToken } = useAuth();
     const [userId, setUserId] = useState(null);
+    const navigate = useNavigate();
 
     useEffect(() => {
-        if (token)
+        if (token) {
+            console.log(token);
             setUserId(jwtDecode(token).user_id);
+        }
     }, [token]);
 
     useEffect(() => {
@@ -55,22 +58,26 @@ const BookPage = () => {
     }, [id]);
 
     const handleAddToCart = () => {
-        if (book) {
-            authFetch(`http://127.0.0.1:8000/cart/${id}/add`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({ book_id: book.id }),
-            }, token, saveToken)
-                .then((response) => response.json())
-                .then((cartItem) => {
-                    console.log(cartItem);
-                    addToCart(book);
-                })
-                .catch((error) => {
-                    alert(error);
-                });
+        if (token) {
+            if (book) {
+                authFetch(`http://127.0.0.1:8000/cart/${id}/add`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ book_id: book.id }),
+                }, token, saveToken)
+                    .then((response) => response.json())
+                    .then((cartItem) => {
+                        console.log(cartItem);
+                        addToCart(book);
+                    })
+                    .catch((error) => {
+                        alert(error);
+                    });
+            }
+        } else {
+            navigate('/login');
         }
     };
 

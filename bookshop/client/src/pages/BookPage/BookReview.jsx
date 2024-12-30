@@ -11,7 +11,8 @@ const Review = ({ review, onDelete }) => {
     const [userId, setUserId] = useState(null);
 
     useEffect(() => {
-        setUserId(jwtDecode(token).user_id);
+        if (token)
+            setUserId(jwtDecode(token).user_id);
     }, [token]);
 
     useEffect(() => {

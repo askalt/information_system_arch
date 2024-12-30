@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Grid, IconButton, Typography, Box } from '@mui/material';
+import { Grid, IconButton, Typography, Box, CircularProgress } from '@mui/material';
 import { Add, Remove, Delete } from '@mui/icons-material';
 import { useCart } from './CartContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -10,6 +10,8 @@ const CartItem = ({ item }) => {
     const { removeFromCart, updateQuantity } = useCart();
     const { token, saveToken } = useAuth();
     const [userId, setUserId] = useState(null);
+    const [book, setBook] = useState(null);
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         if (token)
@@ -59,32 +61,44 @@ const CartItem = ({ item }) => {
             });
     };
 
+    useEffect(() => {
+        setLoading(true);
+        fetch(`http://127.0.0.1:8000/getBook/${item.book_id}`)
+            .then((response) => response.json())
+            .then((book) => {
+                setBook(book);
+            }).finally(() => {
+                setLoading(false);
+            });
+    }, [item.book_id]);
+
     return (
-        <Grid container spacing={2} alignItems="center">
-            <Grid item xs={6} sm={4}>
-                <Typography variant="body1">{item.name}</Typography>
-                <Typography variant="body2" color="textSecondary">{item.author}</Typography>
-            </Grid>
-            <Grid item xs={3}>
-                <Box display="flex" alignItems="center">
-                    <IconButton onClick={handleDecrease} size="small">
-                        <Remove />
-                    </IconButton>
-                    <Typography>{item.quantity}</Typography>
-                    <IconButton onClick={handleIncrease} size="small">
-                        <Add />
-                    </IconButton>
-                </Box>
-            </Grid>
-            <Grid item xs={3}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
-                    <Typography variant="body1">{(item.price * item.quantity).toFixed(2)} ₽</Typography>
-                    <IconButton color="error" onClick={handleRemove}>
-                        <Delete />
-                    </IconButton>
-                </Box>
-            </Grid>
-        </Grid>
+        loading ? (<CircularProgress />) : (
+            <Grid container spacing={2} alignItems="center" >
+                <Grid item xs={6} sm={4}>
+                    <Typography variant="body1">{book.name}</Typography>
+                    <Typography variant="body2" color="textSecondary">{book.author}</Typography>
+                </Grid>
+                <Grid item xs={3}>
+                    <Box display="flex" alignItems="center">
+                        <IconButton onClick={handleDecrease} size="small">
+                            <Remove />
+                        </IconButton>
+                        <Typography>{item.quantity}</Typography>
+                        <IconButton onClick={handleIncrease} size="small">
+                            <Add />
+                        </IconButton>
+                    </Box>
+                </Grid>
+                <Grid item xs={3}>
+                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                        <Typography variant="body1">{(book.price * item.quantity).toFixed(2)} ₽</Typography>
+                        <IconButton color="error" onClick={handleRemove}>
+                            <Delete />
+                        </IconButton>
+                    </Box>
+                </Grid>
+            </Grid >)
     );
 };
 
