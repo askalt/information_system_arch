@@ -7,15 +7,19 @@
 
 /* GameState impl. */
 GameState::GameState(std::unique_ptr<World> world) : world{std::move(world)} {
-  for (const auto& map : this->world->maps) {
+  for (const auto& map : this->world->maps)
+    map_init(map.get());
+  move_on(this->world->start_map);
+  //map_stack.push_back(
+  //    MapStackNode{.x = -1, .y = -1, .map = this->world->start_map});
+}
+
+void GameState::map_init(Map *map) {
     for (const auto object : map->objects) {
       auto as_state_object = dynamic_cast<GameStateObject*>(object);
       assert(as_state_object && "world contains specific objects");
       as_state_object->set_state(this);
     }
-  }
-  map_stack.push_back(
-      MapStackNode{.x = -1, .y = -1, .map = this->world->start_map});
 }
 
 IGameState::IPlayer* GameState::get_player() const {
@@ -80,6 +84,23 @@ void GameState::move_on(Map* map) {
   map_stack.push_back(MapStackNode{.x = x, .y = y, .map = map});
   auto [sx, sy] = map->start_pos();
   world->player->set_pos(sx, sy);
+
+  //generate maps
+  for (auto &enter : map->enters) {
+    if (enter->get_map() == nullptr) {
+      auto label = enter->get_label();
+      auto filename = std::string{label->begin(), label->end()};
+      filename += ".rl";
+      auto file = world->dir / filename;
+      if (!std::filesystem::exists(file)) {
+        auto generated_map = gen_map(15);
+        generated_map->push_player(world->player.get());
+        map_init(generated_map.get());
+        enter->set_map(generated_map.get());
+        world->maps.push_back(std::move(generated_map));
+      }
+    }
+  }
 }
 
 void GameState::move_back() {

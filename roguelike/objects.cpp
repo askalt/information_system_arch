@@ -220,6 +220,7 @@ IGameState::ObjectDescriptor Exit::get_descriptor() const {
 }
 
 void Exit::apply() {
+  assert(state != nullptr);
   auto [xp, yp] = state->get_player()->get_pos();
   if (abs(xp - x) + abs(yp - y) <= 1) {
     state->move_back();
