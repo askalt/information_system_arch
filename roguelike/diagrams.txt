@@ -247,3 +247,19 @@ Engine -> App        : ok
 App    -> GameUI     : draw
 
 @enduml
+
+==========================================
+
+Диаграмма состояний контроллера
+
+@startuml
+
+[*] --> Game
+Game --> Death
+Game --> Win
+Game --> Game
+Death --> Confirm
+Win  --> Confirm
+Confirm --> [*]
+
+@enduml
