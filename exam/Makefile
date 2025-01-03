@@ -1,7 +1,7 @@
 
 BIN ?= bin
 
-CPP   := composite.cpp
+CPP   := composite.cpp decorator.cpp
 STEMS := $(CPP:.cpp=)
 BINS  := $(STEMS:%=$(BIN)/%)
 OBJS  := $(BINS:%=%.o)
@@ -17,7 +17,15 @@ $(DEPS): $(BIN)/%.d : %.cpp
 	@mkdir -p $(@D)
 	$(CXX) -E $(FLAGS) $< -MM -MT $(@:.d=) > $@
 
+.PHONY: $(BINS)-run
+$(BINS)-run: %-run: %
+	echo Kek
+
+.PHONY: build
 build: $(BINS)
+
+.PHONY: run
+run: $(BINS)/run
 
 .PHONY: clean
 clean:
