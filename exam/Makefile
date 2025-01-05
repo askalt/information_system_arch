@@ -1,7 +1,7 @@
 
 BIN ?= bin
 
-CPP   := composite.cpp decorator.cpp
+CPP   := composite.cpp decorator.cpp strategy.cpp
 STEMS := $(CPP:.cpp=)
 BINS  := $(STEMS:%=$(BIN)/%)
 OBJS  := $(BINS:%=%.o)
@@ -20,8 +20,8 @@ $(DEPS): $(BIN)/%.d : %.cpp
 
 .PHONY: $(RUNS)
 $(RUNS): %/run: %
-	@echo "Running: ${@:$(BIN)/%/run=%}"
-	@if ./${@:/run=}; then echo ""; else echo "FAIL"; exit 1; fi
+	@echo "Running: ${@:$(BIN)/%/run=%}..."
+	@if ./${@:/run=}; then echo "\nOK"; else echo "\nFAIL"; exit 1; fi
 
 .PHONY: build
 build: $(BINS)

@@ -1,5 +1,4 @@
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <vector>
@@ -87,7 +86,5 @@ int main() {
   assert(sz_a == 3);
   auto sz_c = dir_c->get_size();
   assert(sz_c == 3 + 1);
-
-  std::cout << "OK" << std::endl;
   return 0;
 }

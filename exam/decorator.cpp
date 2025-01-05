@@ -1,5 +1,4 @@
 #include <cassert>
-#include <iostream>
 #include <memory>
 #include <string>
 #include <tuple>
@@ -68,6 +67,5 @@ int main() {
       std::make_shared<BatchedRowReader>(batch_size, std::move(random_reader));
   auto rows = batched_reader->read_rows();
   assert(rows.size() == batch_size);
-  std::cout << "OK" << std::endl;
   return 0;
 }
