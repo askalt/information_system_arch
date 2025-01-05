@@ -1,0 +1,18 @@
+
+Difference between PROXY and DECORATOR.
+
+https://stackoverflow.com/questions/18618779/differences-between-proxy-and-decorator-pattern
+
+TL;DR
+
+The real distinction is that a Proxy might create its own privately, while a Decorator always takes it from an external source.
+
+Decorator is a strict subset of Proxy. Proxy does not have to have an API as delegatee.
+
+=====
+
+A Decorator is always passed its delegatee. A Proxy might create it himself, or he might have it injected.
+
+But a Proxy always knows the (more) specific type of the delegatee. In other words, the Proxy and its delegatee will have the same base type, but the Proxy points to some derived type. A Decorator points to its own base type. Thus, the difference is in compile-time information about the type of the delegatee.
+
+In a dynamic language, if the delegatee is injected and happens to have the same interface, then there is no difference.
