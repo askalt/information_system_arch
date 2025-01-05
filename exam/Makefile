@@ -1,7 +1,7 @@
 
 BIN ?= bin
 
-CPP   := composite.cpp decorator.cpp strategy.cpp
+CPP   := composite.cpp decorator.cpp strategy.cpp adapter.cpp
 STEMS := $(CPP:.cpp=)
 BINS  := $(STEMS:%=$(BIN)/%)
 OBJS  := $(BINS:%=%.o)
